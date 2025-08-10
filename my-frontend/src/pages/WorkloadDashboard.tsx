@@ -1,135 +1,33 @@
-// import React, { useEffect, useState } from "react";
-// import JobList from "../components/JobList";
-// import JobForm from "../components/JobForm";
-// import { Bar } from "react-chartjs-2";
-// import {
-//   Chart as ChartJS,
-//   CategoryScale,
-//   LinearScale,
-//   BarElement,
-//   Title,
-//   Tooltip,
-//   Legend,
-// } from "chart.js";
-
-// ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
-
-// interface Job {
-//   id: number;
-//   user_name: string;
-//   job_type: string;
-//   task_name: string;
-//   description?: string;
-//   quantity: number;
-//   estimated_duration: number;
-//   unit?: string;
-// }
-
-// const WorkloadDashboard: React.FC = () => {
-//   const [jobs, setJobs] = useState<Job[]>([]);
-//   const [editJob, setEditJob] = useState<Job | null>(null);
-
-//   const fetchJobs = async () => {
-//     try {
-//       const res = await fetch("http://localhost:8000/jobs/");
-//       if (!res.ok) throw new Error("Failed to fetch jobs");
-//       const data = await res.json();
-//       setJobs(data);
-//     } catch (error) {
-//       console.error(error);
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchJobs();
-//   }, []);
-
-//   // Aggregate by normalized name
-//   const aggregatedData = jobs.reduce((acc, job) => {
-//     const nameKey = job.user_name.trim().toLowerCase();
-//     if (!acc[nameKey]) {
-//       acc[nameKey] = {
-//         user_name: job.user_name.trim(),
-//         total_duration: 0,
-//         total_quantity: 0,
-//       };
-//     }
-//     acc[nameKey].total_duration += job.estimated_duration;
-//     acc[nameKey].total_quantity += job.quantity;
-//     return acc;
-//   }, {} as Record<string, { user_name: string; total_duration: number; total_quantity: number }>);
-
-//   const chartData = {
-//     labels: Object.values(aggregatedData).map((item) => item.user_name),
-//     datasets: [
-//       {
-//         label: "Total Estimated Duration",
-//         data: Object.values(aggregatedData).map((item) => item.total_duration),
-//         backgroundColor: "rgba(75, 192, 192, 0.6)",
-//       },
-//     ],
-//   };
-
-//   return (
-//     <div>
-//       <h1>Workload Dashboard</h1>
-
-//       <JobForm
-//         onJobAdded={fetchJobs}
-//         editJob={editJob}
-//         onCancelEdit={() => setEditJob(null)}
-//       />
-//       <JobList
-//         jobs={jobs}
-//         onJobsUpdated={fetchJobs}
-//         onEditJob={(job) => setEditJob(job)}
-//       />
-
-//       <h2>Summary Table</h2>
-//       <table border={1} cellPadding={5}>
-//         <thead>
-//           <tr>
-//             <th>User Name</th>
-//             <th>Total Quantity</th>
-//             <th>Total Estimated Duration</th>
-//           </tr>
-//         </thead>
-//         <tbody>
-//           {Object.values(aggregatedData).map((item) => (
-//             <tr key={item.user_name}>
-//               <td>{item.user_name}</td>
-//               <td>{item.total_quantity}</td>
-//               <td>{item.total_duration}</td>
-//             </tr>
-//           ))}
-//         </tbody>
-//       </table>
-
-//       <h2>Total Estimated Duration by User</h2>
-//       <div style={{ maxWidth: "600px" }}>
-//         <Bar data={chartData} />
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default WorkloadDashboard;
-
-import React, { useEffect, useState } from "react";
-import JobForm, { Job } from "../components/JobForm";
+// src/pages/WorkloadDashboard.tsx
+import React, { useEffect, useMemo, useState } from "react";
+import { Job } from "../types";
+import JobForm from "../components/JobForm";
 import JobList from "../components/JobList";
-import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
+  ArcElement,
   Title,
   Tooltip,
   Legend,
 } from "chart.js";
+import { Bar, Pie } from "react-chartjs-2";
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
+
+const PALETTE = [
+  "#4e79a7","#f28e2b","#e15759","#76b7b2","#59a14f","#edc949",
+  "#af7aa1","#ff9da7","#9c755f","#bab0ab","#1f77b4","#ff7f0e",
+  "#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f",
+  "#bcbd22","#17becf"
+];
+const colorFor = (label: string) => {
+  let h = 0;
+  for (let i = 0; i < label.length; i++) h = (h * 31 + label.charCodeAt(i)) >>> 0;
+  return PALETTE[h % PALETTE.length];
+};
 
 const WorkloadDashboard: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -138,82 +36,144 @@ const WorkloadDashboard: React.FC = () => {
   const fetchJobs = async () => {
     try {
       const res = await fetch("http://localhost:8000/jobs/");
-      if (!res.ok) throw new Error("Failed to fetch jobs");
       const data = await res.json();
       setJobs(data);
     } catch (err) {
       console.error(err);
     }
   };
+  useEffect(() => { fetchJobs(); }, []);
 
-  useEffect(() => {
-    fetchJobs();
-  }, []);
+  // ------- Aggregations -------
+  const aggregated = useMemo(() => {
+    const map: Record<string, { user_name: string; total_duration: number }> = {};
+    jobs.forEach(j => {
+      const name = j.user_name?.trim();
+      if (!name) return;
+      if (!map[name]) map[name] = { user_name: name, total_duration: 0 };
+      map[name].total_duration += Number(j.estimated_duration || 0);
+    });
+    return Object.values(map);
+  }, [jobs]);
 
-  // aggregate by normalized user name
-  const aggregated = Object.values(
-    jobs.reduce((acc: Record<string, { user_name: string; total_duration: number; total_quantity: number }>, j) => {
-      const key = (j.user_name || "").trim().toLowerCase() || "__unknown__";
-      if (!acc[key]) {
-        acc[key] = { user_name: j.user_name ? j.user_name.trim() : "(no name)", total_duration: 0, total_quantity: 0 };
-      }
-      acc[key].total_duration += Number(j.estimated_duration || 0);
-      acc[key].total_quantity += Number(j.quantity || 0);
-      return acc;
-    }, {})
-  );
+  const barLabels = aggregated.map(a => a.user_name);
+  const barData = {
+    labels: barLabels,
+    datasets: [{
+      label: "Total Estimated Duration (hrs)",
+      data: aggregated.map(a => a.total_duration),
+      backgroundColor: barLabels.map(l => colorFor(l)),
+      borderColor: barLabels.map(l => colorFor(l)),
+      borderWidth: 1
+    }]
+  };
 
-  const chartData = {
-    labels: aggregated.map(a => a.user_name),
-    datasets: [
-      {
-        label: "Total Estimated Duration",
-        data: aggregated.map(a => a.total_duration),
-        backgroundColor: "rgba(54, 162, 235, 0.7)",
-      },
-    ],
+  const pieDataByUser = {
+    labels: barLabels,
+    datasets: [{
+      label: "Share (hrs)",
+      data: aggregated.map(a => a.total_duration),
+      backgroundColor: barLabels.map(l => colorFor(l)),
+      borderColor: "#ffffff",
+      borderWidth: 2
+    }]
+  };
+
+  const byTypeMap = jobs.reduce<Record<string, number>>((acc, j) => {
+    const k = j.job_type || "Unknown";
+    acc[k] = (acc[k] || 0) + Number(j.estimated_duration || 0);
+    return acc;
+  }, {});
+  const typeLabels = Object.keys(byTypeMap);
+  const pieDataByType = {
+    labels: typeLabels,
+    datasets: [{
+      label: "Total Estimated (hrs)",
+      data: typeLabels.map(t => byTypeMap[t]),
+      backgroundColor: typeLabels.map(t => colorFor(t)),
+      borderColor: "#ffffff",
+      borderWidth: 2
+    }]
   };
 
   return (
-    <div style={{ padding: 16, fontFamily: "'Poppins', system-ui, sans-serif" }}>
-      <h1 style={{ fontFamily: "'Fredoka One', cursive", marginBottom: 8 }}>Workload Dashboard</h1>
+    <div style={{ padding: 16 }}>
+      <h1>Workload Dashboard</h1>
 
+      {/* Form at top */}
       <JobForm
-        onJobAdded={() => {
-          fetchJobs();
-          setEditJob(null);
-        }}
+        onJobAdded={fetchJobs}
         editJob={editJob}
         onCancelEdit={() => setEditJob(null)}
       />
 
-      <h2>Job List</h2>
-      <JobList jobs={jobs} onJobsUpdated={fetchJobs} onEditJob={(job) => setEditJob(job)} />
+      {/* Charts in the middle */}
+      <div
+        style={{
+          margin: "20px 0",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 16,
+          alignItems: "start"
+        }}
+      >
+        {/* Bar chart card */}
+        <div style={{ background: "#fff", borderRadius: 8, padding: 12, boxShadow: "0 4px 8px rgba(0,0,0,0.05)" }}>
+          <h3 style={{ margin: "0 0 8px" }}>Total Duration by User</h3>
+          {/* FIX: fixed-height wrapper prevents infinite growth */}
+          <div style={{ height: 220 }}>
+            <Bar
+              data={barData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false, // fill the 220px wrapper
+                plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                scales: {
+                  y: { beginAtZero: true, ticks: { precision: 0 } },
+                  x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 } }
+                }
+              }}
+            />
+          </div>
+        </div>
 
-      <h2 style={{ marginTop: 24 }}>Summary</h2>
-      <table border={1} cellPadding={5} style={{ borderCollapse: "collapse", marginBottom: 20 }}>
-        <thead>
-          <tr>
-            <th>User</th>
-            <th>Total Quantity</th>
-            <th>Total Estimated Duration</th>
-          </tr>
-        </thead>
-        <tbody>
-          {aggregated.map(a => (
-            <tr key={a.user_name}>
-              <td>{a.user_name}</td>
-              <td style={{ textAlign: "right" }}>{a.total_quantity}</td>
-              <td style={{ textAlign: "right" }}>{a.total_duration}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        {/* Pie: share by user */}
+        <div style={{ background: "#fff", borderRadius: 8, padding: 12, boxShadow: "0 4px 8px rgba(0,0,0,0.05)" }}>
+          <h3 style={{ margin: "0 0 8px" }}>Share by User</h3>
+          <div style={{ height: 220 }}>
+            <Pie
+              data={pieDataByUser}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: "bottom" } }
+              }}
+            />
+          </div>
+        </div>
 
-      <h2>Total Estimated Duration by User</h2>
-      <div style={{ maxWidth: 800 }}>
-        <Bar data={chartData} />
+        {/* Pie: by job type */}
+        <div style={{ background: "#fff", borderRadius: 8, padding: 12, boxShadow: "0 4px 8px rgba(0,0,0,0.05)" }}>
+          <h3 style={{ margin: "0 0 8px" }}>By Job Type</h3>
+          <div style={{ height: 220 }}>
+            <Pie
+              data={pieDataByType}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: "bottom" } }
+              }}
+            />
+          </div>
+        </div>
       </div>
+
+      {/* List at bottom */}
+      <JobList
+        jobs={jobs}
+        onJobsUpdated={fetchJobs}
+        onEditJob={(job) => setEditJob(job)}
+      />
     </div>
   );
 };

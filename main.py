@@ -1,9 +1,10 @@
-# main.py
 from fastapi import FastAPI, HTTPException, Depends, Request, Query
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional, List
+from typing import Optional, Dict
 from sqlalchemy import func
+from datetime import date
+
 import models
 import database
 
@@ -11,10 +12,14 @@ database.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(title="Workload Manager")
 
-# Allow all origins during dev (change for production)
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,12 +32,71 @@ def get_db():
     finally:
         db.close()
 
-@app.middleware("http")
-async def log_requests(request: Request, call_next):
-    print(f"Request: {request.method} {request.url}")
-    print("Query Params:", dict(request.query_params))
-    response = await call_next(request)
-    return response
+# ---- Rules for auto duration (hours) ----
+DEV_RULES: Dict[str, float] = {
+    "BOM": 2.0,
+    "Sending Sample": 3.0,
+    "Assembly": 3.0,
+    "Power Consumption": 4.0,
+    "EMI": 4.0,
+    "Audio": 4.0,
+    "D_VA Project Management": 5.0,
+    "High Grade Project Management": 160.0,  # ~1 month (8h * 20d)
+    "CST": 40.0,                             # ~1 week
+    "ESD/EOS": 8.0,                          # 1 day
+    "Backend": 40.0,
+    "HDMI": 40.0,
+    "USB": 40.0,
+    "Sub Assy": 40.0,
+}
+
+NON_DEV_RULES: Dict[str, float] = {
+    "Innovation": 2.0,
+    "SHEE 5S": 1.0,
+    "Education": 3.0,
+    "Budget/Accounting": 2.0,
+    "VI": 3.0,
+    "CA": 2.0,
+    "IT": 1.0,
+    "Reinvent": 2.0,
+    "GA": 0.5,
+    "Asset": 3.0,
+}
+
+def compute_estimated(job: models.WorkloadItem) -> float:
+    q = max(1, int(job.quantity or 1))
+    if job.job_type == "DX":
+        return 5.5 * 40.0  # midpoint of 3–8 weeks
+    if job.job_type == "Dev":
+        base = DEV_RULES.get(job.task_name, 0.0)
+        return base * q
+    if job.job_type == "Non Dev":
+        base = NON_DEV_RULES.get(job.task_name, 0.0)
+        return base * q
+    return float(job.estimated_duration or 0.0)
+
+def validate_dates(start_date: Optional[str], due_date: Optional[str]):
+    if not start_date or not due_date:
+        return
+    s = date.fromisoformat(start_date)
+    d = date.fromisoformat(due_date)
+    if d < s:
+        raise HTTPException(status_code=400, detail="due_date must be on/after start_date")
+
+def serialize(r: database.WorkloadItemDB):
+    return {
+        "id": r.id,
+        "user_name": r.user_name,
+        "job_type": r.job_type,
+        "task_name": r.task_name,
+        "description": r.description,
+        "quantity": r.quantity,
+        "estimated_duration": r.estimated_duration,
+        "unit": r.unit,
+        "start_date": r.start_date,
+        "due_date": r.due_date,
+        "status": r.status,  # <-- safe now that the column exists
+    }
 
 @app.post("/jobs/")
 def create_job(job: models.WorkloadItem, db: Session = Depends(get_db)):
@@ -40,50 +104,55 @@ def create_job(job: models.WorkloadItem, db: Session = Depends(get_db)):
     if job.job_type not in allowed_types:
         raise HTTPException(status_code=400, detail=f"job_type must be one of {allowed_types}")
 
+    validate_dates(job.start_date, job.due_date)
+
+    calc = compute_estimated(job)
     job_data = job.dict()
-    # ensure numeric duration
-    if job_data.get("estimated_duration") is not None:
-        try:
-            job_data["estimated_duration"] = float(job_data["estimated_duration"])
-        except (TypeError, ValueError):
-            job_data["estimated_duration"] = None
+    job_data["estimated_duration"] = calc
 
     db_item = database.WorkloadItemDB(**job_data)
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
-
-    return {
-        "id": db_item.id,
-        "user_name": db_item.user_name,
-        "job_type": db_item.job_type,
-        "task_name": db_item.task_name,
-        "description": db_item.description,
-        "quantity": db_item.quantity,
-        "estimated_duration": db_item.estimated_duration,
-        "unit": db_item.unit,
-        "start_date": db_item.start_date,
-        "due_date": db_item.due_date,
-    }
+    return serialize(db_item)
 
 @app.get("/jobs/")
 def read_jobs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     rows = db.query(database.WorkloadItemDB).offset(skip).limit(limit).all()
-    return [
-        {
-            "id": r.id,
-            "user_name": r.user_name,
-            "job_type": r.job_type,
-            "task_name": r.task_name,
-            "description": r.description,
-            "quantity": r.quantity,
-            "estimated_duration": r.estimated_duration,
-            "unit": r.unit,
-            "start_date": r.start_date,
-            "due_date": r.due_date,
-        }
-        for r in rows
-    ]
+    return [serialize(r) for r in rows]
+
+@app.put("/jobs/{job_id}")
+def update_job(job_id: int, updated_job: models.WorkloadItem, db: Session = Depends(get_db)):
+    row = db.query(database.WorkloadItemDB).filter(database.WorkloadItemDB.id == job_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    validate_dates(updated_job.start_date, updated_job.due_date)
+
+    new_duration = compute_estimated(updated_job)
+    for k, v in updated_job.dict(exclude_unset=True).items():
+        setattr(row, k, v)
+    row.estimated_duration = new_duration
+
+    db.commit()
+    db.refresh(row)
+    return serialize(row)
+
+@app.get("/jobs/{job_id}")
+def read_job(job_id: int, db: Session = Depends(get_db)):
+    job = db.query(database.WorkloadItemDB).filter(database.WorkloadItemDB.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return serialize(job)
+
+@app.delete("/jobs/{job_id}")
+def delete_job(job_id: int, db: Session = Depends(get_db)):
+    job = db.query(database.WorkloadItemDB).filter(database.WorkloadItemDB.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    db.delete(job)
+    db.commit()
+    return {"message": "Job deleted successfully", "deleted_id": job_id}
 
 @app.get("/jobs/summary_by_user")
 def get_summary_by_user(db: Session = Depends(get_db)):
@@ -97,7 +166,6 @@ def get_summary_by_user(db: Session = Depends(get_db)):
         .group_by(func.lower(database.WorkloadItemDB.user_name))
         .all()
     )
-
     return [
         {
             "user_name": row.user_name,
@@ -112,106 +180,28 @@ def get_summary_by_user(db: Session = Depends(get_db)):
 def get_summary(
     job_type: Optional[str] = Query(None),
     user_name: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     query = db.query(
         func.lower(database.WorkloadItemDB.user_name).label("user_name"),
         database.WorkloadItemDB.job_type.label("job_type"),
         func.count(database.WorkloadItemDB.id).label("total_jobs"),
         func.sum(database.WorkloadItemDB.quantity).label("total_quantity"),
-        func.sum(database.WorkloadItemDB.estimated_duration).label("total_estimated_duration")
+        func.sum(database.WorkloadItemDB.estimated_duration).label("total_estimated_duration"),
     )
-
     if job_type:
         query = query.filter(database.WorkloadItemDB.job_type == job_type)
-
     if user_name:
         query = query.filter(func.lower(database.WorkloadItemDB.user_name) == user_name.lower())
-
     query = query.group_by(func.lower(database.WorkloadItemDB.user_name), database.WorkloadItemDB.job_type)
     results = query.all()
-
     return [
         {
             "user_name": r.user_name,
             "job_type": r.job_type,
             "total_jobs": int(r.total_jobs or 0),
             "total_quantity": int(r.total_quantity or 0),
-            "total_estimated_duration": float(r.total_estimated_duration or 0)
+            "total_estimated_duration": float(r.total_estimated_duration or 0),
         }
         for r in results
-    ]
-
-@app.get("/jobs/{job_id}")
-def read_job(job_id: int, db: Session = Depends(get_db)):
-    job = db.query(database.WorkloadItemDB).filter(database.WorkloadItemDB.id == job_id).first()
-    if job is None:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return {
-        "id": job.id,
-        "user_name": job.user_name,
-        "job_type": job.job_type,
-        "task_name": job.task_name,
-        "description": job.description,
-        "quantity": job.quantity,
-        "estimated_duration": job.estimated_duration,
-        "unit": job.unit,
-        "start_date": job.start_date,
-        "due_date": job.due_date,
-    }
-
-@app.put("/jobs/{job_id}")
-def update_job(job_id: int, updated_job: models.WorkloadItem, db: Session = Depends(get_db)):
-    job = db.query(database.WorkloadItemDB).filter(database.WorkloadItemDB.id == job_id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-
-    for key, value in updated_job.dict(exclude_unset=True).items():
-        if key == "estimated_duration" and value is not None:
-            try:
-                value = float(value)
-            except (TypeError, ValueError):
-                value = None
-        setattr(job, key, value)
-    db.commit()
-    db.refresh(job)
-    return {
-        "id": job.id,
-        "user_name": job.user_name,
-        "job_type": job.job_type,
-        "task_name": job.task_name,
-        "description": job.description,
-        "quantity": job.quantity,
-        "estimated_duration": job.estimated_duration,
-        "unit": job.unit,
-        "start_date": job.start_date,
-        "due_date": job.due_date,
-    }
-
-@app.delete("/jobs/{job_id}")
-def delete_job(job_id: int, db: Session = Depends(get_db)):
-    job = db.query(database.WorkloadItemDB).filter(database.WorkloadItemDB.id == job_id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    db.delete(job)
-    db.commit()
-    return {"message": "Job deleted successfully", "deleted_id": job_id}
-
-@app.get("/jobs/filter/")
-def filter_jobs(job_type: str, db: Session = Depends(get_db)):
-    rows = db.query(database.WorkloadItemDB).filter(database.WorkloadItemDB.job_type == job_type).all()
-    return [
-        {
-            "id": r.id,
-            "user_name": r.user_name,
-            "job_type": r.job_type,
-            "task_name": r.task_name,
-            "description": r.description,
-            "quantity": r.quantity,
-            "estimated_duration": r.estimated_duration,
-            "unit": r.unit,
-            "start_date": r.start_date,
-            "due_date": r.due_date,
-        }
-        for r in rows
     ]

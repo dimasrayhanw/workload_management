@@ -22,5 +22,6 @@ class WorkloadItemDB(Base):
     quantity = Column(Integer, default=1)
     estimated_duration = Column(Float, nullable=True)
     unit = Column(String, nullable=True)
-    start_date = Column(String, nullable=True)  # store ISO date string
-    due_date = Column(String, nullable=True)    # store ISO date string
+    start_date = Column(String, nullable=True)
+    due_date = Column(String, nullable=True)
+    status = Column(String, nullable=True, index=True)  # <-- add
