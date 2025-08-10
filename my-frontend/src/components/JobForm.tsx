@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Job } from "../types";
+import type { Job } from "../types";
 import { api } from "../api";
 
 const UNIT_SUGGESTIONS: Record<string, string> = {

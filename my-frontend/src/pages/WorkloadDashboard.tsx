@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Job } from "../types";
+import type { Job } from "../types";
 import { api } from "../api";
 import JobForm from "../components/JobForm";
 import JobList from "../components/JobList";

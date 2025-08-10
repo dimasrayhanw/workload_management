@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Job } from "../types";
+import type { Job } from "../types";
 import { api } from "../api";
 
 type Props = {
@@ -7,7 +7,8 @@ type Props = {
   onJobsUpdated: () => void;
   onEditJob: (job: Job) => void;
 };
-type Sort = { key: keyof Job | "estimated_duration" | "quantity"; dir: "asc" | "desc" } | null;
+type SortKey = keyof Job | "estimated_duration" | "quantity";
+type Sort = { key: SortKey; dir: "asc" | "desc" } | null;
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -28,9 +29,9 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
   const pageSize = 10;
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
-  const toggleSort = (key: Sort["key"]) => {
+  const toggleSort = (key: SortKey) => {
     setPage(1);
-    setSort((prev) => {
+    setSort(prev => {
       if (!prev || prev.key !== key) return { key, dir: "asc" };
       if (prev.dir === "asc") return { key, dir: "desc" };
       return null;

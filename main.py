@@ -13,11 +13,16 @@ database.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(title="Workload Manager")
 
-# Open to everyone (no auth)
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:4173",   # vite preview
+    "http://127.0.0.1:4173",   # vite preview
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # public
-    allow_credentials=False,    # must be False when allow_origins=["*"]
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
