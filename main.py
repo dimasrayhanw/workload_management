@@ -99,6 +99,11 @@ def serialize(r: database.WorkloadItemDB):
         "status": r.status or "Open",
     }
 
+# main.py
+@app.get("/", tags=["meta"])
+def root():
+    return {"ok": True, "service": "Workload Manager API", "docs": "/docs"}
+
 @app.get("/jobs/")
 def read_jobs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     rows = db.query(database.WorkloadItemDB).offset(skip).limit(limit).all()
