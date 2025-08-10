@@ -1,26 +1,23 @@
+# backend/main.py
 from fastapi import FastAPI, HTTPException, Depends, Request, Query
-from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional, Dict
+from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import date
+from typing import Optional, Dict
 
-import models
 import database
+import models
 
 database.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(title="Workload Manager")
 
-ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
+# Open to everyone (no auth)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"],        # public
+    allow_credentials=False,    # must be False when allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -32,7 +29,7 @@ def get_db():
     finally:
         db.close()
 
-# ---- Rules for auto duration (hours) ----
+# ---- Auto duration rules (hours) ----
 DEV_RULES: Dict[str, float] = {
     "BOM": 2.0,
     "Sending Sample": 3.0,
@@ -41,15 +38,14 @@ DEV_RULES: Dict[str, float] = {
     "EMI": 4.0,
     "Audio": 4.0,
     "D_VA Project Management": 5.0,
-    "High Grade Project Management": 160.0,  # ~1 month (8h * 20d)
-    "CST": 40.0,                             # ~1 week
-    "ESD/EOS": 8.0,                          # 1 day
-    "Backend": 40.0,
+    "High Grade Project Management": 160.0,  # ~1 month (8h*20d)
+    "CST": 40.0,      # ~1 week
+    "ESD/EOS": 8.0,   # 1 day
+    "Backend": 40.0,  # 1 week
     "HDMI": 40.0,
     "USB": 40.0,
     "Sub Assy": 40.0,
 }
-
 NON_DEV_RULES: Dict[str, float] = {
     "Innovation": 2.0,
     "SHEE 5S": 1.0,
@@ -95,65 +91,60 @@ def serialize(r: database.WorkloadItemDB):
         "unit": r.unit,
         "start_date": r.start_date,
         "due_date": r.due_date,
-        "status": r.status,  # <-- safe now that the column exists
+        "status": r.status or "Open",
     }
-
-@app.post("/jobs/")
-def create_job(job: models.WorkloadItem, db: Session = Depends(get_db)):
-    allowed_types = {"Dev", "Non Dev", "DX"}
-    if job.job_type not in allowed_types:
-        raise HTTPException(status_code=400, detail=f"job_type must be one of {allowed_types}")
-
-    validate_dates(job.start_date, job.due_date)
-
-    calc = compute_estimated(job)
-    job_data = job.dict()
-    job_data["estimated_duration"] = calc
-
-    db_item = database.WorkloadItemDB(**job_data)
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return serialize(db_item)
 
 @app.get("/jobs/")
 def read_jobs(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     rows = db.query(database.WorkloadItemDB).offset(skip).limit(limit).all()
     return [serialize(r) for r in rows]
 
+@app.post("/jobs/")
+def create_job(job: models.WorkloadItem, db: Session = Depends(get_db)):
+    allowed_types = {"Dev", "Non Dev", "DX"}
+    if job.job_type not in allowed_types:
+        raise HTTPException(status_code=400, detail=f"job_type must be one of {allowed_types}")
+    validate_dates(job.start_date, job.due_date)
+    job_data = job.dict()
+    job_data["estimated_duration"] = compute_estimated(job)
+    db_item = database.WorkloadItemDB(**job_data)
+    db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+    return serialize(db_item)
+
 @app.put("/jobs/{job_id}")
 def update_job(job_id: int, updated_job: models.WorkloadItem, db: Session = Depends(get_db)):
     row = db.query(database.WorkloadItemDB).filter(database.WorkloadItemDB.id == job_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Job not found")
-
     validate_dates(updated_job.start_date, updated_job.due_date)
-
-    new_duration = compute_estimated(updated_job)
+    # overwrite fields
     for k, v in updated_job.dict(exclude_unset=True).items():
         setattr(row, k, v)
-    row.estimated_duration = new_duration
-
+    # recompute duration for consistency
+    row.estimated_duration = compute_estimated(updated_job)
     db.commit()
     db.refresh(row)
     return serialize(row)
 
 @app.get("/jobs/{job_id}")
 def read_job(job_id: int, db: Session = Depends(get_db)):
-    job = db.query(database.WorkloadItemDB).filter(database.WorkloadItemDB.id == job_id).first()
-    if not job:
+    r = db.query(database.WorkloadItemDB).filter(database.WorkloadItemDB.id == job_id).first()
+    if not r:
         raise HTTPException(status_code=404, detail="Job not found")
-    return serialize(job)
+    return serialize(r)
 
 @app.delete("/jobs/{job_id}")
 def delete_job(job_id: int, db: Session = Depends(get_db)):
-    job = db.query(database.WorkloadItemDB).filter(database.WorkloadItemDB.id == job_id).first()
-    if not job:
+    r = db.query(database.WorkloadItemDB).filter(database.WorkloadItemDB.id == job_id).first()
+    if not r:
         raise HTTPException(status_code=404, detail="Job not found")
-    db.delete(job)
+    db.delete(r)
     db.commit()
     return {"message": "Job deleted successfully", "deleted_id": job_id}
 
+# Summaries (unchanged)
 @app.get("/jobs/summary_by_user")
 def get_summary_by_user(db: Session = Depends(get_db)):
     results = (

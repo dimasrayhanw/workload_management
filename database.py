@@ -1,7 +1,6 @@
-# database.py
+# backend/database.py
 from sqlalchemy import create_engine, Column, Integer, String, Text, Float
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./workload.db"
 
@@ -16,12 +15,12 @@ class WorkloadItemDB(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_name = Column(String, nullable=True, index=True)
-    job_type = Column(String, index=True)
+    job_type = Column(String, index=True)               # "Dev" | "Non Dev" | "DX"
     task_name = Column(String, index=True)
     description = Column(Text, nullable=True)
     quantity = Column(Integer, default=1)
-    estimated_duration = Column(Float, nullable=True)
-    unit = Column(String, nullable=True)
-    start_date = Column(String, nullable=True)
-    due_date = Column(String, nullable=True)
-    status = Column(String, nullable=True, index=True)  # <-- add
+    estimated_duration = Column(Float, nullable=True)   # stored in hours
+    unit = Column(String, nullable=True)                # unit for quantity (e.g., item, set, tv, week)
+    start_date = Column(String, nullable=True)          # ISO date string
+    due_date = Column(String, nullable=True)            # ISO date string
+    status = Column(String, nullable=True, default="Open")

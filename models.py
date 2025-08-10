@@ -2,6 +2,7 @@
 from pydantic import BaseModel, field_validator
 from typing import Optional, Literal
 from datetime import date
+# backend/models.py
 
 class WorkloadItem(BaseModel):
     user_name: str
@@ -9,11 +10,11 @@ class WorkloadItem(BaseModel):
     task_name: str
     description: Optional[str] = None
     quantity: int = 1
-    estimated_duration: Optional[float] = None  # will be auto-calculated
-    unit: Optional[str] = None
-    start_date: Optional[str] = None  # "YYYY-MM-DD"
-    due_date: Optional[str] = None    # "YYYY-MM-DD"
-    status: Optional[str] = None  
+    estimated_duration: Optional[float] = None  # server will compute; client can ignore
+    unit: Optional[str] = None                  # unit for the quantity
+    start_date: Optional[str] = None            # YYYY-MM-DD
+    due_date: Optional[str] = None
+    status: Optional[str] = "Open"
 
     @field_validator("start_date", "due_date")
     @classmethod

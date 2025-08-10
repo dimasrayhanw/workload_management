@@ -1,13 +1,12 @@
-// src/components/JobList.tsx
 import React, { useMemo, useState } from "react";
 import { Job } from "../types";
+import { api } from "../api";
 
 type Props = {
   jobs: Job[];
   onJobsUpdated: () => void;
   onEditJob: (job: Job) => void;
 };
-
 type Sort = { key: keyof Job | "estimated_duration" | "quantity"; dir: "asc" | "desc" } | null;
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
@@ -31,7 +30,7 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
 
   const toggleSort = (key: Sort["key"]) => {
     setPage(1);
-    setSort(prev => {
+    setSort((prev) => {
       if (!prev || prev.key !== key) return { key, dir: "asc" };
       if (prev.dir === "asc") return { key, dir: "desc" };
       return null;
@@ -48,7 +47,6 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
     if (fStartTo) r = r.filter(j => !j.start_date || j.start_date <= fStartTo);
     if (fDueFrom) r = r.filter(j => !j.due_date || j.due_date >= fDueFrom);
     if (fDueTo) r = r.filter(j => !j.due_date || j.due_date <= fDueTo);
-
     if (sort) {
       r.sort((a: any, b: any) => {
         const A = a[sort.key] ?? "";
@@ -67,9 +65,13 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
   const allOnPageSelected = pageRows.length > 0 && pageRows.every(j => selectedIds.includes(j.id!));
   const toggleAllOnPage = () => {
     const ids = pageRows.map(j => j.id!) as number[];
-    if (allOnPageSelected) setSelectedIds(prev => prev.filter(id => !ids.includes(id)));
-    else setSelectedIds(prev => [...new Set([...prev, ...ids])]);
+    if (allOnPageSelected) {
+      setSelectedIds(prev => prev.filter(id => !ids.includes(id)));
+    } else {
+      setSelectedIds(prev => [...new Set([...prev, ...ids])]);
+    }
   };
+
   const toggleOne = (id?: number) => {
     if (!id) return;
     setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
@@ -78,17 +80,21 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
   const handleDelete = async (id?: number) => {
     if (!id) return;
     if (!window.confirm("Delete this job?")) return;
-    const res = await fetch(`http://localhost:8000/jobs/${id}`, { method: "DELETE" });
-    if (!res.ok) return alert("Delete failed");
-    onJobsUpdated();
-    setSelectedIds(prev => prev.filter(x => x !== id));
+    try {
+      await api.deleteJob(id);
+      onJobsUpdated();
+      setSelectedIds(prev => prev.filter(x => x !== id));
+    } catch (e) {
+      console.error(e);
+      alert("Delete failed.");
+    }
   };
 
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
     if (!window.confirm(`Delete ${selectedIds.length} selected job(s)?`)) return;
     for (const id of selectedIds) {
-      await fetch(`http://localhost:8000/jobs/${id}`, { method: "DELETE" });
+      try { await api.deleteJob(id); } catch {}
     }
     setSelectedIds([]);
     onJobsUpdated();
@@ -113,7 +119,9 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
         String(j.quantity ?? ""),
         j.unit || "",
         typeof j.estimated_duration === "number" && isFinite(j.estimated_duration)
-          ? (j.estimated_duration % 1 === 0 ? j.estimated_duration.toFixed(0) : j.estimated_duration.toFixed(1))
+          ? (j.estimated_duration % 1 === 0
+              ? j.estimated_duration.toFixed(0)
+              : j.estimated_duration.toFixed(1))
           : "",
         j.start_date || "",
         j.due_date || "",
@@ -181,9 +189,8 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
             <th>Actions</th>
           </tr>
         </thead>
-
         <tbody>
-          {pageRows.map(job => (
+          {pageRows.map((job) => (
             <tr key={job.id} style={isOverdue(job) ? { background: "#fff3f3" } : undefined}>
               <td>
                 <input
@@ -208,12 +215,8 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
               </td>
             </tr>
           ))}
-
           {pageRows.length === 0 && (
-            <tr>
-              {/* 12 columns total including checkbox + actions */}
-              <td colSpan={12} style={{ textAlign: "center", padding: 16 }}>No jobs</td>
-            </tr>
+            <tr><td colSpan={12} style={{ textAlign: "center", padding: 16 }}>No jobs</td></tr>
           )}
         </tbody>
       </table>
@@ -221,9 +224,9 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
       {/* Pagination */}
       <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
         <button disabled={page <= 1} onClick={() => setPage(1)}>⏮</button>
-        <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Prev</button>
+        <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</button>
         <span>Page {page} / {totalPages}</span>
-        <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next</button>
+        <button disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
         <button disabled={page >= totalPages} onClick={() => setPage(totalPages)}>⏭</button>
       </div>
     </div>

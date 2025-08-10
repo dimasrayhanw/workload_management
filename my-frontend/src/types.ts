@@ -6,9 +6,9 @@ export interface Job {
   task_name: string;
   description?: string;
   quantity: number;
-  estimated_duration: number;
-  unit?: string;
-  start_date?: string | null;
-  due_date?: string | null;
+  estimated_duration: number; // hours (server-calculated)
+  unit?: string;              // unit for quantity (e.g., set, item, week)
+  start_date?: string;        // YYYY-MM-DD
+  due_date?: string;          // YYYY-MM-DD
   status?: "Open" | "Done";
 }
