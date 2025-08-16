@@ -386,3 +386,22 @@ tbody tr:nth-child(even) {
   color: #b7c2e6;                 /* matches your theme */
   margin-bottom: 6px;
 }
+
+/* Ensure overdue rows are solid red without zebra bleeding */
+.table-wrap tbody tr.row-overdue,
+.table-wrap tbody tr.row-overdue td {
+  background: #ff6b6b !important;  /* solid red */
+  color: #fff !important;          /* white text */
+}
+
+/* Prevent nth-child zebra from applying */
+.table-wrap tbody tr.row-overdue:nth-child(odd),
+.table-wrap tbody tr.row-overdue:nth-child(even) {
+  background: #ff6b6b !important;
+}
+
+/* Keep hover from altering overdue background */
+.table-wrap tbody tr.row-overdue:hover,
+.table-wrap tbody tr.row-overdue:hover td {
+  background: #ff6b6b !important;
+}
