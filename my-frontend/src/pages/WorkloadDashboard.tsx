@@ -1,118 +1,9 @@
-// import React, { useEffect, useMemo, useState } from "react";
-// import type { Job } from "../types";
-// import { api } from "../api";
-// import JobForm from "../components/JobForm";
-// import JobList from "../components/JobList";
-
-// import { Pie, Bar } from "react-chartjs-2";
-// import {
-//   Chart as ChartJS,
-//   ArcElement,
-//   Tooltip,
-//   Legend,
-//   CategoryScale,
-//   LinearScale,
-//   BarElement,
-//   Title as ChartTitle,
-// } from "chart.js";
-
-// ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, ChartTitle);
-
-// const WorkloadDashboard: React.FC = () => {
-//   const [jobs, setJobs] = useState<Job[]>([]);
-//   const [editJob, setEditJob] = useState<Job | null>(null);
-
-//   const fetchJobs = async () => {
-//     try {
-//       setJobs(await api.getJobs());
-//     } catch (err) {
-//       console.error(err);
-//       alert("Failed to fetch jobs.");
-//     }
-//   };
-
-//   useEffect(() => {
-//     fetchJobs();
-//   }, []);
-
-//   // aggregate durations by user
-//   const aggregated = useMemo(() => {
-//     const m = new Map<string, number>();
-//     for (const j of jobs) {
-//       const key = (j.user_name || "").trim() || "(no name)";
-//       m.set(key, (m.get(key) || 0) + Number(j.estimated_duration || 0));
-//     }
-//     const labels = Array.from(m.keys());
-//     const data = labels.map(l => m.get(l) || 0);
-//     return { labels, data };
-//   }, [jobs]);
-
-//   const barData = {
-//     labels: aggregated.labels,
-//     datasets: [
-//       {
-//         label: "Total Estimated Duration (hrs)",
-//         data: aggregated.data,
-//         backgroundColor: [
-//           "#4bc0c0","#ff6384","#36a2eb","#ffcd56","#9966ff","#ff9f40","#66bb6a","#ec407a","#29b6f6","#ab47bc"
-//         ],
-//       },
-//     ],
-//   };
-
-//   const pieData = {
-//     labels: aggregated.labels,
-//     datasets: [
-//       {
-//         data: aggregated.data,
-//         backgroundColor: [
-//           "#4bc0c0","#ff6384","#36a2eb","#ffcd56","#9966ff","#ff9f40","#66bb6a","#ec407a","#29b6f6","#ab47bc"
-//         ],
-//       },
-//     ],
-//   };
-
-//   const barOptions = {
-//     responsive: true,
-//     maintainAspectRatio: false,
-//     plugins: { legend: { display: false }, title: { display: false, text: "" } },
-//     scales: { y: { beginAtZero: true } },
-//   } as const;
-
-//   const pieOptions = {
-//     responsive: true,
-//     maintainAspectRatio: false,
-//     plugins: { legend: { position: "right" as const } },
-//   };
-
-//   return (
-//     <div style={{ padding: 16 }}>
-//       <h1>Workload Dashboard</h1>
-
-//       {/* Charts row */}
-//       <div style={{ display: "flex", gap: 16, alignItems: "stretch", margin: "8px 0 24px" }}>
-//         <div style={{ flex: 1, minWidth: 300, height: 260 }}>
-//           <Bar data={barData} options={barOptions} />
-//         </div>
-//         <div style={{ flex: 1, minWidth: 300, height: 260 }}>
-//           <Pie data={pieData} options={pieOptions} />
-//         </div>
-//       </div>
-
-//       <JobForm onJobAdded={() => { fetchJobs(); setEditJob(null); }} editJob={editJob} onCancelEdit={() => setEditJob(null)} />
-
-//       <h2>Job List</h2>
-//       <JobList jobs={jobs} onJobsUpdated={fetchJobs} onEditJob={(job) => setEditJob(job)} />
-//     </div>
-//   );
-// };
-
-// export default WorkloadDashboard;
-
-import React, { useEffect, useMemo, useState } from "react";
+// src/pages/WorkloadDashboard.tsx
+import React from "react";
 import { api } from "../api";
 import JobForm from "../components/JobForm";
 import JobList from "../components/JobList";
+import type { Job } from "../types";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
@@ -122,10 +13,11 @@ import "../App.css";
 const COLORS = ["#6ea8fe","#9b8dfc","#4dd4ac","#ffd166","#ff8fab","#a1e3ff","#b2f7ef","#f7a072"];
 
 const WorkloadDashboard: React.FC = () => {
-  const [jobs, setJobs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [jobs, setJobs] = React.useState<Job[]>([]);
+  const [loading, setLoading] = React.useState(false);
+  const [editingJob, setEditingJob] = React.useState<Job | null>(null);
 
-  const refresh = async () => {
+  const fetchJobs = React.useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.getJobs();
@@ -133,11 +25,14 @@ const WorkloadDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { refresh(); }, []);
+  React.useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
 
-  const byUser = useMemo(() => {
+  // Charts data
+  const byUser = React.useMemo(() => {
     const map: Record<string, number> = {};
     for (const j of jobs) {
       const key = (j.user_name || "unknown").toLowerCase();
@@ -146,7 +41,7 @@ const WorkloadDashboard: React.FC = () => {
     return Object.entries(map).map(([user, hours]) => ({ user, hours: +hours.toFixed(1) }));
   }, [jobs]);
 
-  const byType = useMemo(() => {
+  const byType = React.useMemo(() => {
     const map: Record<string, number> = {};
     for (const j of jobs) map[j.job_type] = (map[j.job_type] || 0) + (j.estimated_duration || 0);
     return Object.entries(map).map(([name, value]) => ({ name, value: +value.toFixed(1) }));
@@ -206,7 +101,14 @@ const WorkloadDashboard: React.FC = () => {
       {/* Form */}
       <div className="card pad" style={{ marginBottom: 14 }}>
         <div className="section-title">Add / Edit Job</div>
-        <JobForm onJobAdded={refresh} />
+        <JobForm
+          editJob={editingJob}
+          onCancelEdit={() => setEditingJob(null)}
+          onJobAdded={() => {
+            setEditingJob(null);
+            fetchJobs();
+          }}
+        />
       </div>
 
       {/* List */}
@@ -214,12 +116,16 @@ const WorkloadDashboard: React.FC = () => {
         <div className="toolbar" style={{ marginBottom: 10 }}>
           <div className="section-title" style={{ margin: 0 }}>Jobs</div>
           <div className="spacer" />
-          <button className="btn ghost small" onClick={refresh} disabled={loading}>
+          <button className="btn ghost small" onClick={fetchJobs} disabled={loading}>
             {loading ? "Refreshing…" : "Refresh"}
           </button>
         </div>
         <div className="table-wrap">
-          <JobList jobs={jobs} onJobsUpdated={refresh} onEditJob={() => {}} />
+          <JobList
+            jobs={jobs}
+            onJobsUpdated={fetchJobs}
+            onEditJob={(job) => setEditingJob(job)}
+          />
         </div>
       </div>
     </div>
