@@ -314,3 +314,39 @@ tbody tr:nth-child(even) {
 .table-wrap tr td:empty {
   background: #0c1331 !important;
 }
+
+.job-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem; /* spacing between columns */
+}
+.form-container label {
+  display: block;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+.form-container input,
+.form-container select,
+.form-container textarea {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.form-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-full {
+  grid-column: 1 / -1; /* spans both columns */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
