@@ -5,6 +5,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import date
 from typing import Optional, Dict
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
+from pydantic import ValidationError
 import os
 import database
 import models
@@ -99,6 +102,17 @@ def serialize(r: database.WorkloadItemDB):
     }
 
 # main.py
+
+@app.exception_handler(SQLAlchemyError)
+def db_error_handler(request, exc: SQLAlchemyError):
+    print("💥 SQL error:", exc)
+    return JSONResponse(status_code=400, content={"error": "database_error", "detail": str(exc)})
+
+@app.exception_handler(ValidationError)
+def val_error_handler(request, exc: ValidationError):
+    print("💥 Validation error:", exc)
+    return JSONResponse(status_code=422, content={"error": "validation_error", "detail": exc.errors()})
+
 @app.get("/healthz")
 def healthz():
     # simple fast check for Render health probe

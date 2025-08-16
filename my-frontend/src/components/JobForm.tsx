@@ -198,8 +198,12 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
     // Server will compute estimated_duration based on (type, task, quantity)
     const payload = {
       ...formData,
-      job_type: formData.job_type as JobType,
+      user_name: (formData.user_name || "").trim(),
+      job_type: formData.job_type as "Dev" | "Non Dev" | "DX",
+      quantity: Number(formData.quantity ?? 1),
     };
+    // optional: basic sanity
+    if (!payload.user_name) { alert("User name required"); return; }
 
     try {
       const res = await fetch(url, {
