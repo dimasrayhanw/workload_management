@@ -1,241 +1,53 @@
-// import React, { useEffect, useState } from "react";
-// import type { Job } from "../types";
-// import { api } from "../api";
+// src/components/JobForm.tsx
+import React, { useEffect, useMemo, useState } from "react";
+import type { Job } from "../types"; // type-only import to satisfy verbatimModuleSyntax
 
-// const UNIT_SUGGESTIONS: Record<string, string> = {
-//   // Dev
-//   "Dev|BOM": "item",
-//   "Dev|Sending Sample": "tv",
-//   "Dev|Assembly": "time",
-//   "Dev|Power Consumption": "time",
-//   "Dev|EMI": "tv",
-//   "Dev|Audio": "set",
-//   "Dev|D_VA Project Management": "project",
-//   "Dev|High Grade Project Management": "project",
-//   "Dev|CST": "week",
-//   "Dev|ESD/EOS": "day",
-//   "Dev|Backend": "week",
-//   "Dev|HDMI": "week",
-//   "Dev|USB": "week",
-//   "Dev|Sub Assy": "week",
-//   // Non Dev
-//   "Non Dev|Innovation": "time",
-//   "Non Dev|SHEE 5S": "time",
-//   "Non Dev|Education": "time",
-//   "Non Dev|Budget/Accounting": "time",
-//   "Non Dev|VI": "time",
-//   "Non Dev|CA": "time",
-//   "Non Dev|IT": "time",
-//   "Non Dev|Reinvent": "time",
-//   "Non Dev|GA": "time",
-//   "Non Dev|Asset": "time",
-//   // DX
-//   "DX|": "time",
-// };
+type JobType = "Dev" | "Non Dev" | "DX";
 
-// const DEV_TASKS = [
-//   "BOM","Sending Sample","Assembly","Power Consumption","EMI","Audio",
-//   "D_VA Project Management","High Grade Project Management","CST","ESD/EOS",
-//   "Backend","HDMI","USB","Sub Assy"
-// ];
-// const NON_DEV_TASKS = [
-//   "Innovation","SHEE 5S","Education","Budget/Accounting","VI","CA","IT","Reinvent","GA","Asset"
-// ];
-// // DX tasks are not fixed; leave free input.
+/** Fixed task choices per Job Type */
+const TASKS_BY_TYPE: Record<JobType, string[]> = {
+  Dev: [
+    "BOM",
+    "Sending Sample",
+    "Assembly",
+    "Power Consumption",
+    "EMI",
+    "Audio",
+    "D_VA Project Management",
+    "High Grade Project Management",
+    "CST",
+    "ESD/EOS",
+    "Backend",
+    "HDMI",
+    "USB",
+    "Sub Assy",
+  ],
+  "Non Dev": [
+    "Innovation",
+    "SHEE 5S",
+    "Education",
+    "Budget/Accounting",
+    "VI",
+    "CA",
+    "IT",
+    "Reinvent",
+    "GA",
+    "Asset",
+  ],
+  DX: [
+    // If you want specific DX tasks, list them here.
+    // When left empty, we’ll show a single “General DX Work” option.
+    "General DX Work",
+  ],
+};
 
-// function suggestUnit(job_type: string, task_name: string): string {
-//   const key = `${job_type}|${task_name}`.trim();
-//   if (UNIT_SUGGESTIONS[key]) return UNIT_SUGGESTIONS[key];
-//   if (job_type === "Dev") return "time";
-//   if (job_type === "Non Dev") return "time";
-//   if (job_type === "DX") return "time";
-//   return "";
-// }
-
-// type Props = {
-//   onJobAdded: () => void;
-//   editJob?: Job | null;
-//   onCancelEdit?: () => void;
-// };
-
-// const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
-//   const [formData, setFormData] = useState<Job>({
-//     user_name: "",
-//     job_type: "" as any,
-//     task_name: "",
-//     description: "",
-//     quantity: 0,
-//     estimated_duration: 0,
-//     unit: "",
-//     start_date: "",
-//     due_date: "",
-//     status: "Open",
-//   });
-
-//   useEffect(() => {
-//     if (editJob) {
-//       setFormData({
-//         ...editJob,
-//         start_date: editJob.start_date || "",
-//         due_date: editJob.due_date || "",
-//         unit: editJob.unit || "",
-//         status: editJob.status || "Open",
-//       });
-//     }
-//   }, [editJob]);
-
-//   const handleChange = (
-//     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-//   ) => {
-//     const { name, value } = e.target;
-//     setFormData(prev => {
-//       const next = {
-//         ...prev,
-//         [name]: name === "quantity" || name === "estimated_duration" ? Number(value) : value,
-//       } as Job;
-
-//       if (name === "job_type" || name === "task_name") {
-//         const suggested = suggestUnit(
-//           name === "job_type" ? String(value) : String(prev.job_type),
-//           name === "task_name" ? String(value) : String(prev.task_name)
-//         );
-//         if (!prev.unit || prev.unit === "" || prev.unit === "time") {
-//           next.unit = suggested;
-//         }
-//         // if job_type changed, reset task_name for a clean select list
-//         if (name === "job_type") next.task_name = "";
-//       }
-//       return next;
-//     });
-//   };
-
-//   const handleSubmit = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     try {
-//       if (editJob?.id) {
-//         await api.updateJob(editJob.id, formData);
-//       } else {
-//         await api.createJob(formData);
-//       }
-//       onJobAdded();
-//       setFormData({
-//         user_name: "",
-//         job_type: "" as any,
-//         task_name: "",
-//         description: "",
-//         quantity: 0,
-//         estimated_duration: 0,
-//         unit: "",
-//         start_date: "",
-//         due_date: "",
-//         status: "Open",
-//       });
-//       onCancelEdit?.();
-//     } catch (err) {
-//       console.error(err);
-//       alert("Failed to save job. See console.");
-//     }
-//   };
-
-//   const taskOptions = formData.job_type === "Dev"
-//     ? DEV_TASKS
-//     : formData.job_type === "Non Dev"
-//     ? NON_DEV_TASKS
-//     : []; // DX free text
-
-//   return (
-//     <form onSubmit={handleSubmit} style={{ marginBottom: "1rem", display: "grid", gap: 8 }}>
-//       <input name="user_name" placeholder="User Name" value={formData.user_name} onChange={handleChange} required />
-
-//       <select name="job_type" value={formData.job_type} onChange={handleChange} required>
-//         <option value="">-- Select Job Type --</option>
-//         <option value="Dev">Dev</option>
-//         <option value="Non Dev">Non Dev</option>
-//         <option value="DX">DX</option>
-//       </select>
-
-//       {/* Task: select for Dev & Non Dev, free input for DX */}
-//       {formData.job_type === "DX" ? (
-//         <input
-//           name="task_name"
-//           placeholder="Task Name (DX free text)"
-//           value={formData.task_name}
-//           onChange={handleChange}
-//           required
-//         />
-//       ) : (
-//         <select
-//           name="task_name"
-//           value={formData.task_name}
-//           onChange={handleChange}
-//           required
-//         >
-//           <option value="">-- Select Task --</option>
-//           {taskOptions.map(t => (
-//             <option key={t} value={t}>{t}</option>
-//           ))}
-//         </select>
-//       )}
-
-//       <textarea
-//         name="description"
-//         placeholder="Description"
-//         value={formData.description || ""}
-//         onChange={handleChange}
-//         rows={3}
-//         style={{ resize: "vertical" }}
-//       />
-
-//       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-//         <input name="quantity" type="number" placeholder="Quantity" value={formData.quantity} onChange={handleChange} required />
-//         <input
-//           name="unit"
-//           placeholder="Unit (e.g., set, tv, week, item)"
-//           value={formData.unit || ""}
-//           onChange={handleChange}
-//         />
-//         <input
-//           name="estimated_duration"
-//           type="number"
-//           step="0.1"
-//           placeholder="Estimated Duration (hrs)"
-//           value={formData.estimated_duration}
-//           onChange={handleChange}
-//           disabled
-//           title="Calculated automatically by server"
-//         />
-//       </div>
-
-//       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-//         <label>Start Date <input name="start_date" type="date" value={formData.start_date || ""} onChange={handleChange} /></label>
-//         <label>Due Date <input name="due_date" type="date" value={formData.due_date || ""} onChange={handleChange} /></label>
-//         <label>Status
-//           <select name="status" value={formData.status || "Open"} onChange={handleChange}>
-//             <option>Open</option>
-//             <option>Done</option>
-//           </select>
-//         </label>
-//       </div>
-
-//       <div style={{ display: "flex", gap: 8 }}>
-//         <button type="submit" className="btn-primary">{editJob ? "Update Job" : "Add Job"}</button>
-//         {editJob && <button type="button" className="btn-danger" onClick={onCancelEdit}>Cancel</button>}
-//       </div>
-//     </form>
-//   );
-// };
-
-// export default JobForm;
-
-import React, { useEffect, useState } from "react";
-import type { Job } from "../types";
-import { api } from "../api";
-
+/** Unit suggestions by exact (JobType|Task) match, with a sane per-type fallback */
 const UNIT_SUGGESTIONS: Record<string, string> = {
-  "Dev|BOM": "item",
+  // Dev
+  "Dev|BOM": "ea",
   "Dev|Sending Sample": "tv",
-  "Dev|Assembly": "time",
-  "Dev|Power Consumption": "time",
+  "Dev|Assembly": "set",
+  "Dev|Power Consumption": "set",
   "Dev|EMI": "tv",
   "Dev|Audio": "set",
   "Dev|D_VA Project Management": "project",
@@ -246,25 +58,39 @@ const UNIT_SUGGESTIONS: Record<string, string> = {
   "Dev|HDMI": "week",
   "Dev|USB": "week",
   "Dev|Sub Assy": "week",
-  "Non Dev|Innovation": "time",
-  "Non Dev|SHEE 5S": "time",
-  "Non Dev|Education": "time",
-  "Non Dev|Budget/Accounting": "time",
-  "Non Dev|VI": "time",
-  "Non Dev|CA": "time",
-  "Non Dev|IT": "time",
-  "Non Dev|Reinvent": "time",
-  "Non Dev|GA": "time",
-  "Non Dev|Asset": "time",
-  "DX|": "time",
+
+  // Non Dev
+  "Non Dev|Innovation": "task",
+  "Non Dev|SHEE 5S": "task",
+  "Non Dev|Education": "session",
+  "Non Dev|Budget/Accounting": "task",
+  "Non Dev|VI": "task",
+  "Non Dev|CA": "task",
+  "Non Dev|IT": "task",
+  "Non Dev|Reinvent": "task",
+  "Non Dev|GA": "task",
+  "Non Dev|Asset": "task",
+
+  // DX
+  "DX|General DX Work": "task",
 };
 
-function suggestUnit(job_type: string, task_name: string): string {
+function suggestUnit(job_type: JobType | "", task_name: string): string {
   const key = `${job_type}|${task_name}`.trim();
   if (UNIT_SUGGESTIONS[key]) return UNIT_SUGGESTIONS[key];
-  if (job_type === "Dev" || job_type === "Non Dev" || job_type === "DX") return "time";
+  if (job_type === "Dev") return "set";
+  if (job_type === "Non Dev") return "task";
+  if (job_type === "DX") return "task";
   return "";
 }
+
+/** Local form state:
+ * allow job_type = "" for the placeholder option while keeping Job’s shape.
+ */
+type FormState = Omit<Job, "job_type" | "estimated_duration"> & {
+  job_type: JobType | "";
+  estimated_duration: number; // still shown (disabled) and sent, server will overwrite
+};
 
 type Props = {
   onJobAdded: () => void;
@@ -273,12 +99,12 @@ type Props = {
 };
 
 const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
-  const [formData, setFormData] = useState<Job>({
+  const [formData, setFormData] = useState<FormState>({
     user_name: "",
-    job_type: "Dev",
+    job_type: "",
     task_name: "",
     description: "",
-    quantity: 0,
+    quantity: 1,
     estimated_duration: 0,
     unit: "",
     start_date: "",
@@ -286,62 +112,124 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
     status: "Open",
   });
 
+  // Prefill when editing
   useEffect(() => {
     if (editJob) {
       setFormData({
         ...editJob,
+        job_type: editJob.job_type as JobType,
+        description: editJob.description || "",
+        unit: editJob.unit || "",
         start_date: editJob.start_date || "",
         due_date: editJob.due_date || "",
-        unit: editJob.unit || "",
-        status: editJob.status || "Open",
+        status: (editJob.status as any) || "Open",
+        // duration shown but disabled (server recomputes on save)
+        estimated_duration: Number(editJob.estimated_duration || 0),
       });
+    } else {
+      // reset if switching from edit to add
+      setFormData((prev) => ({
+        user_name: "",
+        job_type: "",
+        task_name: "",
+        description: "",
+        quantity: 1,
+        estimated_duration: 0,
+        unit: "",
+        start_date: "",
+        due_date: "",
+        status: "Open",
+      }));
     }
   }, [editJob]);
+
+  const availableTasks = useMemo(() => {
+    if (!formData.job_type) return [];
+    const arr = TASKS_BY_TYPE[formData.job_type] || [];
+    return arr.length ? arr : ["General"];
+  }, [formData.job_type]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setFormData(prev => {
-      const next = {
-        ...prev,
-        [name]: name === "quantity" || name === "estimated_duration" ? Number(value) : value,
-      } as Job;
 
-      if (name === "job_type" || name === "task_name") {
-        const suggested = suggestUnit(
-          name === "job_type" ? String(value) : String(prev.job_type),
-          name === "task_name" ? String(value) : String(prev.task_name)
-        );
-        if (!prev.unit || prev.unit === "" || prev.unit === "time") {
+    setFormData((prev) => {
+      const next: FormState = {
+        ...prev,
+        [name]:
+          name === "quantity" || name === "estimated_duration"
+            ? Number(value)
+            : (value as any),
+      };
+
+      // When job type changes: reset task, suggest a unit
+      if (name === "job_type") {
+        next.task_name = "";
+        next.unit = suggestUnit(value as JobType | "", "");
+      }
+
+      // When task changes: refresh unit (if empty or generic), keep user overrides
+      if (name === "task_name") {
+        const suggested = suggestUnit(prev.job_type, value);
+        if (!prev.unit || prev.unit === "task" || prev.unit === "set") {
           next.unit = suggested;
         }
       }
+
       return next;
     });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // basic client guard
+    if (!formData.job_type) {
+      alert("Please select a Job Type.");
+      return;
+    }
+    if (!formData.task_name) {
+      alert("Please select a Task Name.");
+      return;
+    }
+
+    const url = editJob
+      ? `${import.meta.env.VITE_API_BASE}/jobs/${editJob.id}`
+      : `${import.meta.env.VITE_API_BASE}/jobs/`;
+    const method = editJob ? "PUT" : "POST";
+
+    // Server will compute estimated_duration based on (type, task, quantity)
+    const payload = {
+      ...formData,
+      // ensure correct JobType in payload
+      job_type: formData.job_type as JobType,
+    };
+
     try {
-      if (editJob?.id) {
-        await api.updateJob(editJob.id, formData);
-      } else {
-        await api.createJob(formData);
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Save failed: ${res.status} ${text}`);
       }
-      onJobAdded();
+      // success
       setFormData({
         user_name: "",
-        job_type: "Dev",
+        job_type: "",
         task_name: "",
         description: "",
-        quantity: 0,
+        quantity: 1,
         estimated_duration: 0,
         unit: "",
         start_date: "",
         due_date: "",
         status: "Open",
       });
+      onJobAdded();
       onCancelEdit?.();
     } catch (err) {
       console.error(err);
@@ -350,47 +238,142 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="card grid pad" style={{ gap: 10 }}>
-      <div className="row">
-        <input className="input" name="user_name" placeholder="User Name" value={formData.user_name} onChange={handleChange} required />
-        <select className="input" name="job_type" value={formData.job_type} onChange={handleChange} required>
-          <option value="">Job Type…</option>
+    <form onSubmit={handleSubmit} className="w-full grid gap-3 mb-4">
+      {/* Row: User & Status */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <input
+          className="input"
+          name="user_name"
+          placeholder="User Name"
+          value={formData.user_name}
+          onChange={handleChange}
+          required
+        />
+
+        <select
+          className="input"
+          name="status"
+          value={formData.status || "Open"}
+          onChange={handleChange}
+        >
+          <option>Open</option>
+          <option>Done</option>
+        </select>
+
+        <div className="grid grid-cols-2 gap-3">
+          <label className="text-sm text-gray-600">
+            Start Date
+            <input
+              className="input mt-1"
+              name="start_date"
+              type="date"
+              value={formData.start_date || ""}
+              onChange={handleChange}
+            />
+          </label>
+          <label className="text-sm text-gray-600">
+            Due Date
+            <input
+              className="input mt-1"
+              name="due_date"
+              type="date"
+              value={formData.due_date || ""}
+              onChange={handleChange}
+            />
+          </label>
+        </div>
+      </div>
+
+      {/* Row: Type & Task */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <select
+          className="input"
+          name="job_type"
+          value={formData.job_type}
+          onChange={handleChange}
+          required
+        >
+          <option value="" disabled>
+            -- Select Job Type --
+          </option>
           <option value="Dev">Dev</option>
           <option value="Non Dev">Non Dev</option>
           <option value="DX">DX</option>
         </select>
-        <input className="input" name="task_name" placeholder="Task Name" value={formData.task_name} onChange={handleChange} required />
+
+        <select
+          className="input"
+          name="task_name"
+          value={formData.task_name}
+          onChange={handleChange}
+          required
+          disabled={!formData.job_type}
+        >
+          <option value="" disabled>
+            {formData.job_type ? "Select a task" : "Select job type first"}
+          </option>
+          {availableTasks.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
       </div>
 
-      <textarea className="input" name="description" placeholder="Description" value={formData.description || ""} onChange={handleChange} />
+      {/* Description */}
+      <textarea
+        className="input"
+        name="description"
+        placeholder="Description"
+        value={formData.description || ""}
+        onChange={handleChange}
+        rows={3}
+      />
 
-      <div className="row">
-        <input className="input" name="quantity" type="number" placeholder="Quantity" value={formData.quantity} onChange={handleChange} required />
-        <input className="input" name="unit" placeholder="Unit (e.g., set, tv, week)" value={formData.unit || ""} onChange={handleChange} />
-        <input className="input" name="estimated_duration" type="number" step="0.1" placeholder="Estimated Duration (hrs)" value={formData.estimated_duration} onChange={handleChange} disabled />
+      {/* Row: Quantity, Unit, Estimated Duration */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <input
+          className="input"
+          name="quantity"
+          type="number"
+          min={1}
+          step={1}
+          placeholder="Quantity"
+          value={formData.quantity}
+          onChange={handleChange}
+          required
+        />
+
+        <input
+          className="input"
+          name="unit"
+          placeholder="Unit (ea, set, week, task)"
+          value={formData.unit || ""}
+          onChange={handleChange}
+        />
+
+        <input
+          className="input"
+          name="estimated_duration"
+          type="number"
+          step="0.1"
+          value={formData.estimated_duration}
+          onChange={handleChange}
+          disabled
+          title="Calculated automatically by server"
+          placeholder="Estimated Duration (hrs)"
+        />
       </div>
 
-      <div className="row">
-        <label className="input" style={{ display:"flex", alignItems:"center", gap:10 }}>
-          Start
-          <input style={{ border: "none", background:"transparent", color:"inherit" }} name="start_date" type="date" value={formData.start_date || ""} onChange={handleChange} />
-        </label>
-        <label className="input" style={{ display:"flex", alignItems:"center", gap:10 }}>
-          Due
-          <input style={{ border: "none", background:"transparent", color:"inherit" }} name="due_date" type="date" value={formData.due_date || ""} onChange={handleChange} />
-        </label>
-        <label className="input" style={{ display:"flex", alignItems:"center", gap:10 }}>
-          Status
-          <select style={{ border: "none", background:"transparent", color:"inherit" }} name="status" value={formData.status || "Open"} onChange={handleChange}>
-            <option>Open</option>
-            <option>Done</option>
-          </select>
-        </label>
-      </div>
-
-      <div className="row" style={{ justifyContent:"flex-end" }}>
-        {editJob && <button type="button" className="btn danger" onClick={onCancelEdit}>Cancel</button>}
-        <button type="submit" className="btn primary">{editJob ? "Update Job" : "Add Job"}</button>
+      <div className="flex gap-2">
+        <button type="submit" className="btn-primary">
+          {editJob ? "Update Job" : "Add Job"}
+        </button>
+        {editJob && (
+          <button type="button" className="btn-danger" onClick={onCancelEdit}>
+            Cancel
+          </button>
+        )}
       </div>
     </form>
   );
