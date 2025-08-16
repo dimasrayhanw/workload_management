@@ -390,18 +390,18 @@ tbody tr:nth-child(even) {
 /* Ensure overdue rows are solid red without zebra bleeding */
 .table-wrap tbody tr.row-overdue,
 .table-wrap tbody tr.row-overdue td {
-  background: #ff6b6b !important;  /* solid red */
+  background: rgba(255, 107, 107, 0.2) !important;  /* solid red */
   color: #fff !important;          /* white text */
 }
 
 /* Prevent nth-child zebra from applying */
 .table-wrap tbody tr.row-overdue:nth-child(odd),
 .table-wrap tbody tr.row-overdue:nth-child(even) {
-  background: #ff6b6b !important;
+  background: rgba(255, 107, 107, 0.35) !important;
 }
 
 /* Keep hover from altering overdue background */
 .table-wrap tbody tr.row-overdue:hover,
 .table-wrap tbody tr.row-overdue:hover td {
-  background: #ff6b6b !important;
+  background: rgba(255, 107, 107, 0.235) !important;
 }
