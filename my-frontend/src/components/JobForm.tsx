@@ -17,8 +17,8 @@ const TASKS_BY_TYPE: Record<JobType, string[]> = {
 };
 
 const UNIT_SUGGESTIONS: Record<string,string> = {
-  "Dev|BOM - Part Compose":"ea","Dev|BOM - Compare":"ea","Dev|BOM - HW Option":"ea","Dev|BOM - Rule Validation":"ea","Dev|BOM - Tool Option":"ea","Dev|BOM - Automation":"ea",
-  "Dev|BOM Check":"ea","Dev|Sending Sample":"set","Dev|Assembly":"set","Dev|Power Consumption":"model","Dev|EMI":"set","Dev|Audio":"set","Dev|D_VA Project Management":"model",
+  "Dev|BOM - Part Compose":"model","Dev|BOM - Compare":"model","Dev|BOM - HW Option":"ea","Dev|BOM - Rule Validation":"task","Dev|BOM - Tool Option":"model","Dev|BOM - Automation":"model",
+  "Dev|BOM Check":"model","Dev|Sending Sample":"set","Dev|Assembly":"set","Dev|Power Consumption":"model","Dev|EMI":"set","Dev|Audio":"set","Dev|D_VA Project Management":"model",
   "Dev|High Grade Project Management":"model","Dev|Material Forecast/Request":"model","Dev|CST":"set","Dev|ESD/EOS":"set",
   "Dev|Backend":"set","Dev|HDMI":"set","Dev|USB":"set","Dev|Sub Assy":"set","Dev|DCDC":"set","Dev|Others (1 hour)":"set",
   "Non Dev|Innovation":"task","Non Dev|SHEE 5S":"task","Non Dev|Education":"task",
