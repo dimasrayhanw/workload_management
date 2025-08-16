@@ -200,13 +200,19 @@ tbody tr {
   background: #0c1331 !important; 
   color: var(--text);
 }
+/* Normal zebra striping */
 tbody tr:nth-child(even) {
-  background: #0f173c !important;
+  background: var(--row-even);
+}
+tbody tr:nth-child(odd) {
+  background: var(--row-odd);
 }
 
-/* Overdue row must win over zebra striping */
-tbody tr.row-overdue,
-tbody tr.row-overdue > td {
+/* Force overdue rows to ignore zebra */
+tbody tr.row-overdue {
+  background: var(--overdue) !important;
+}
+tbody tr.row-overdue td {
   background: var(--overdue) !important;
   color: var(--text) !important;
 }
