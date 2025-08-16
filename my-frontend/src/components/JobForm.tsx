@@ -6,25 +6,25 @@ type JobType = "Dev" | "Non Dev" | "DX";
 
 const TASKS_BY_TYPE: Record<JobType, string[]> = {
   Dev: [
-    "BOM","Sending Sample","Assembly","Power Consumption","EMI","Audio",
-    "D_VA Project Management","High Grade Project Management","CST","ESD/EOS",
-    "Backend","HDMI","USB","Sub Assy",
+    "BOM - Part Compose","BOM - Compare","BOM - HW Option","BOM - Rule Validation","BOM - Tool Option","BOM - Automation","BOM Check","Sending Sample","Assembly",
+    "D_VA Project Management","Material Forecast/Request","High Grade Project Management","CST","ESD/EOS","Power Consumption","EMI","Audio",
+    "Backend","HDMI","USB","Sub Assy","DCDC","Others (1 hour)"
   ],
   "Non Dev": [
-    "Innovation","SHEE 5S","Education","Budget/Accounting","VI","CA","IT","Reinvent","GA","Asset",
+    "Innovation","SHEE 5S","Education","Budget/Accounting","Investment","VI","CA","IT","Reinvent","GA","Asset","Warehouse","Others (1 hour)"
   ],
-  DX: ["General DX Work"],
+  DX: ["Initial Setup","Phase 1","Phase 2","Phase 3","Beta Test","Launching","Others (1 hour)"],
 };
 
 const UNIT_SUGGESTIONS: Record<string,string> = {
-  "Dev|BOM":"ea","Dev|Sending Sample":"tv","Dev|Assembly":"set","Dev|Power Consumption":"set",
-  "Dev|EMI":"tv","Dev|Audio":"set","Dev|D_VA Project Management":"project",
-  "Dev|High Grade Project Management":"project","Dev|CST":"week","Dev|ESD/EOS":"day",
-  "Dev|Backend":"week","Dev|HDMI":"week","Dev|USB":"week","Dev|Sub Assy":"week",
-  "Non Dev|Innovation":"task","Non Dev|SHEE 5S":"task","Non Dev|Education":"session",
-  "Non Dev|Budget/Accounting":"task","Non Dev|VI":"task","Non Dev|CA":"task","Non Dev|IT":"task",
-  "Non Dev|Reinvent":"task","Non Dev|GA":"task","Non Dev|Asset":"task",
-  "DX|General DX Work":"task",
+  "Dev|BOM - Part Compose":"ea","Dev|BOM - Compare":"ea","Dev|BOM - HW Option":"ea","Dev|BOM - Rule Validation":"ea","Dev|BOM - Tool Option":"ea","Dev|BOM - Automation":"ea",
+  "Dev|BOM Check":"ea","Dev|Sending Sample":"set","Dev|Assembly":"set","Dev|Power Consumption":"model","Dev|EMI":"set","Dev|Audio":"set","Dev|D_VA Project Management":"model",
+  "Dev|High Grade Project Management":"model","Dev|Material Forecast/Request":"model","Dev|CST":"set","Dev|ESD/EOS":"set",
+  "Dev|Backend":"set","Dev|HDMI":"set","Dev|USB":"set","Dev|Sub Assy":"set","Dev|DCDC":"set","Dev|Others (1 hour)":"set",
+  "Non Dev|Innovation":"task","Non Dev|SHEE 5S":"task","Non Dev|Education":"task",
+  "Non Dev|Budget/Accounting":"task","Non Dev|Investment":"task","Non Dev|VI":"task","Non Dev|CA":"task","Non Dev|IT":"task",
+  "Non Dev|Reinvent":"task","Non Dev|GA":"task","Non Dev|Asset":"task","Non Dev|Warehouse":"task","Non Dev|Others (1 hour)":"task",
+  "DX|Initial Setup":"task","DX|Phase 1":"task","DX|Phase 2":"task","DX|Phase 3":"task","DX|Beta Test":"task","DX|Launching":"task","DX|Others (1 hour)":"task",
 };
 
 function suggestUnit(job_type: JobType | "", task_name: string) {

@@ -37,39 +37,61 @@ def get_db():
         db.close()
 
 # ---- Auto duration rules (hours) ----
-DEV_RULES: Dict[str, float] = {
-    "BOM": 2.0,
+DEV_RULES: Dict[str, float] = { # hour per day
+    "BOM - Part Compose": 2.0,
+    "BOM - Compare": 1.0,
+    "BOM - HW Option": 4.0,
+    "BOM - Rule Validation": 3.0,
+    "BOM - Tool Option": 2.0,
+    "BOM - Automation": 4.0,
+    "BOM Check": 3.0,
+    "Material Forecast/Request": 0.2,
     "Sending Sample": 3.0,
-    "Assembly": 3.0,
+    "Assembly": 0.3,
     "Power Consumption": 4.0,
-    "EMI": 4.0,
-    "Audio": 4.0,
-    "D_VA Project Management": 5.0,
-    "High Grade Project Management": 160.0,  # ~1 month (8h*20d)
-    "CST": 40.0,      # ~1 week
-    "ESD/EOS": 8.0,   # 1 day
-    "Backend": 40.0,  # 1 week
-    "HDMI": 40.0,
-    "USB": 40.0,
-    "Sub Assy": 40.0,
+    "EMI": 5.0,
+    "Audio": 5.0,
+    "D_VA Project Management": 2.0,
+    "High Grade Project Management": 4.0,  
+    "CST": 5.0,     
+    "ESD/EOS": 3.0,  
+    "Backend": 5.0,  
+    "HDMI": 4.0,
+    "USB": 4.0,
+    "Sub Assy": 4.0,
+    "DCDC": 4.0,
+    "Others (1 hour)": 1.0,
 }
-NON_DEV_RULES: Dict[str, float] = {
+NON_DEV_RULES: Dict[str, float] = {# hour per day
     "Innovation": 2.0,
     "SHEE 5S": 1.0,
     "Education": 3.0,
     "Budget/Accounting": 2.0,
+    "Investment": 3.0,
     "VI": 3.0,
     "CA": 2.0,
     "IT": 1.0,
     "Reinvent": 2.0,
     "GA": 0.5,
-    "Asset": 3.0,
+    "Asset": 5.0,
+    "Warehouse": 4.0,
+    "Others (1 hour)": 1.0,
+}
+DX_RULES: Dict[str, float] = {# hour per day
+    "Initial Setup": 2.0,
+    "Phase 1": 4.0,
+    "Phase 2": 4.0,
+    "Phase 3": 4.0,
+    "Beta Test": 2.0,
+    "Launching": 0.5,
+    "Others (1 hour)": 1.0,
 }
 
 def compute_estimated(job: models.WorkloadItem) -> float:
     q = max(1, int(job.quantity or 1))
     if job.job_type == "DX":
-        return 5.5 * 40.0  # midpoint of 3–8 weeks
+        base = DX_RULES.get(job.task_name, 0.0)
+        return base * q
     if job.job_type == "Dev":
         base = DEV_RULES.get(job.task_name, 0.0)
         return base * q
