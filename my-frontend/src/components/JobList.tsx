@@ -173,7 +173,7 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
         </div>
       )}
 
-      <table border={1} cellPadding={5} style={{ width: "100%", borderCollapse: "collapse" }}>
+      {/* <table border={1} cellPadding={5} style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
             <th><input type="checkbox" checked={allOnPageSelected} onChange={toggleAllOnPage} /></th>
@@ -213,6 +213,53 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
               <td>
                 <button className="btn-primary" onClick={() => onEditJob(job)}>Edit</button>{" "}
                 <button className="btn-danger" onClick={() => handleDelete(job.id)}>Delete</button>
+              </td>
+            </tr>
+          ))}
+          {pageRows.length === 0 && (
+            <tr><td colSpan={12} style={{ textAlign: "center", padding: 16 }}>No jobs</td></tr>
+          )}
+        </tbody>
+      </table> */}
+
+      <table>
+        <thead>
+          <tr>
+            <th><input type="checkbox" checked={allOnPageSelected} onChange={toggleAllOnPage} /></th>
+            <th onClick={() => toggleSort("user_name")} style={{ cursor: "pointer" }}>User Name</th>
+            <th onClick={() => toggleSort("job_type")} style={{ cursor: "pointer" }}>Job Type</th>
+            <th onClick={() => toggleSort("task_name")} style={{ cursor: "pointer" }}>Task Name</th>
+            <th>Description</th>
+            <th onClick={() => toggleSort("quantity")} style={{ cursor: "pointer" }}>Quantity</th>
+            <th>Unit</th>
+            <th onClick={() => toggleSort("estimated_duration")} style={{ cursor: "pointer" }}>Est. Duration (hrs)</th>
+            <th onClick={() => toggleSort("start_date")} style={{ cursor: "pointer" }}>Start</th>
+            <th onClick={() => toggleSort("due_date")} style={{ cursor: "pointer" }}>Due</th>
+            <th onClick={() => toggleSort("status")} style={{ cursor: "pointer" }}>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {pageRows.map((job) => (
+            <tr key={job.id} className={isOverdue(job) ? "row-overdue" : undefined}>
+              <td>
+                <input type="checkbox" checked={selectedIds.includes(job.id!)} onChange={() => toggleOne(job.id)} />
+              </td>
+              <td>{job.user_name}</td>
+              <td>{job.job_type}</td>
+              <td>{job.task_name}</td>
+              <td>{job.description || "-"}</td>
+              <td className="cell-right">{job.quantity}</td>
+              <td>{job.unit || "-"}</td>
+              <td className="cell-right nowrap">{fmtHours(job.estimated_duration)}</td>
+              <td>{job.start_date || "-"}</td>
+              <td>{job.due_date || "-"}</td>
+              <td><span className={`status ${job.status || "Open"}`}>{job.status || "Open"}</span></td>
+              <td>
+                <div className="row">
+                  <button className="btn small" onClick={() => onEditJob(job)}>Edit</button>
+                  <button className="btn danger small" onClick={() => handleDelete(job.id)}>Delete</button>
+                </div>
               </td>
             </tr>
           ))}
