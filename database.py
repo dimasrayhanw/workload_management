@@ -13,6 +13,13 @@ if raw_url.startswith("postgres://"):
 elif raw_url.startswith("postgresql://") and "+psycopg2" not in raw_url:
     raw_url = raw_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
+is_sqlite = raw_url.startswith("sqlite")
+connect_args = {"check_same_thread": False} if is_sqlite else {
+    # psycopg2 args:
+    "connect_timeout": 5,              # seconds
+    "options": "-c statement_timeout=5000",  # 5s query timeout
+}
+
 # 3) Ensure SSL for hosted Postgres if not already present
 if raw_url.startswith("postgresql+psycopg2://") and "sslmode=" not in raw_url:
     sep = "&" if "?" in raw_url else "?"
@@ -27,7 +34,7 @@ engine = create_engine(
     DATABASE_URL,
     future=True,
     pool_pre_ping=True,
-    echo=True,
+    echo=False,
     connect_args=connect_args,
 )
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, future=True)

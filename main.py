@@ -9,7 +9,7 @@ import os
 import database
 import models
 
-database.Base.metadata.create_all(bind=database.engine)
+# database.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(title="Workload Manager")
 
@@ -99,6 +99,23 @@ def serialize(r: database.WorkloadItemDB):
     }
 
 # main.py
+@app.get("/healthz")
+def healthz():
+    # simple fast check for Render health probe
+    return {"ok": True}
+
+@app.on_event("startup")
+def on_startup():
+    # Try to create tables, but don't prevent the app from starting.
+    try:
+        # SQLAlchemy 2.x way to create_all safely
+        with database.engine.begin() as conn:
+            database.Base.metadata.create_all(bind=conn)
+        print("✅ DB tables ensured.")
+    except SQLAlchemyError as e:
+        # Log and continue — app still boots; API will 500 on DB routes until DB works
+        print(f"⚠️  DB init failed (continuing to serve): {e}")
+
 @app.get("/", tags=["meta"])
 def root():
     return {"ok": True, "service": "Workload Manager API", "docs": "/docs"}
