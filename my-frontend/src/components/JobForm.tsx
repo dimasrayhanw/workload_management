@@ -4,38 +4,30 @@ import type { Job } from "../types";
 
 type JobType = "Dev" | "Non Dev" | "DX";
 
-/** Fixed task choices per Job Type */
 const TASKS_BY_TYPE: Record<JobType, string[]> = {
   Dev: [
-    "BOM", "Sending Sample", "Assembly", "Power Consumption", "EMI", "Audio",
-    "D_VA Project Management", "High Grade Project Management", "CST", "ESD/EOS",
-    "Backend", "HDMI", "USB", "Sub Assy",
+    "BOM","Sending Sample","Assembly","Power Consumption","EMI","Audio",
+    "D_VA Project Management","High Grade Project Management","CST","ESD/EOS",
+    "Backend","HDMI","USB","Sub Assy",
   ],
   "Non Dev": [
-    "Innovation", "SHEE 5S", "Education", "Budget/Accounting", "VI", "CA", "IT",
-    "Reinvent", "GA", "Asset",
+    "Innovation","SHEE 5S","Education","Budget/Accounting","VI","CA","IT","Reinvent","GA","Asset",
   ],
   DX: ["General DX Work"],
 };
 
-/** Unit suggestions by exact (JobType|Task) match, with a sane per-type fallback */
-const UNIT_SUGGESTIONS: Record<string, string> = {
-  // Dev
-  "Dev|BOM": "ea", "Dev|Sending Sample": "tv", "Dev|Assembly": "set", "Dev|Power Consumption": "set",
-  "Dev|EMI": "tv", "Dev|Audio": "set", "Dev|D_VA Project Management": "project",
-  "Dev|High Grade Project Management": "project", "Dev|CST": "week", "Dev|ESD/EOS": "day",
-  "Dev|Backend": "week", "Dev|HDMI": "week", "Dev|USB": "week", "Dev|Sub Assy": "week",
-
-  // Non Dev
-  "Non Dev|Innovation": "task", "Non Dev|SHEE 5S": "task", "Non Dev|Education": "session",
-  "Non Dev|Budget/Accounting": "task", "Non Dev|VI": "task", "Non Dev|CA": "task", "Non Dev|IT": "task",
-  "Non Dev|Reinvent": "task", "Non Dev|GA": "task", "Non Dev|Asset": "task",
-
-  // DX
-  "DX|General DX Work": "task",
+const UNIT_SUGGESTIONS: Record<string,string> = {
+  "Dev|BOM":"ea","Dev|Sending Sample":"tv","Dev|Assembly":"set","Dev|Power Consumption":"set",
+  "Dev|EMI":"tv","Dev|Audio":"set","Dev|D_VA Project Management":"project",
+  "Dev|High Grade Project Management":"project","Dev|CST":"week","Dev|ESD/EOS":"day",
+  "Dev|Backend":"week","Dev|HDMI":"week","Dev|USB":"week","Dev|Sub Assy":"week",
+  "Non Dev|Innovation":"task","Non Dev|SHEE 5S":"task","Non Dev|Education":"session",
+  "Non Dev|Budget/Accounting":"task","Non Dev|VI":"task","Non Dev|CA":"task","Non Dev|IT":"task",
+  "Non Dev|Reinvent":"task","Non Dev|GA":"task","Non Dev|Asset":"task",
+  "DX|General DX Work":"task",
 };
 
-function suggestUnit(job_type: JobType | "", task_name: string): string {
+function suggestUnit(job_type: JobType | "", task_name: string) {
   const key = `${job_type}|${task_name}`.trim();
   if (UNIT_SUGGESTIONS[key]) return UNIT_SUGGESTIONS[key];
   if (job_type === "Dev") return "set";
@@ -44,8 +36,7 @@ function suggestUnit(job_type: JobType | "", task_name: string): string {
   return "";
 }
 
-/** Local form state allowing job_type = "" for placeholder */
-type FormState = Omit<Job, "job_type" | "estimated_duration"> & {
+type FormState = Omit<Job,"job_type"|"estimated_duration"> & {
   job_type: JobType | "";
   estimated_duration: number;
 };
@@ -70,7 +61,6 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
     status: "Open",
   });
 
-  // Prefill when editing
   useEffect(() => {
     if (editJob) {
       setFormData({
@@ -119,12 +109,10 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
             : (value as any),
       };
 
-      // When job type changes: reset task, suggest a unit
       if (name === "job_type") {
         next.task_name = "";
         next.unit = suggestUnit(value as JobType | "", "");
       }
-      // When task changes: refresh unit (if empty/generic)
       if (name === "task_name") {
         const suggested = suggestUnit(prev.job_type, value);
         if (!prev.unit || prev.unit === "task" || prev.unit === "set") {
@@ -164,7 +152,6 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
         const text = await res.text();
         throw new Error(`Save failed: ${res.status} ${text}`);
       }
-      // success
       setFormData({
         user_name: "",
         job_type: "",
@@ -187,14 +174,14 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
 
   return (
     <form onSubmit={handleSubmit} className="form-surface grid gap-4">
-      {/* Two-column grid on desktop; stacks on small screens */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* LEFT COLUMN — 4 fields */}
-        <div className="grid gap-3">
-          <div>
-            <label className="text-sm" style={{ color: "#b7c2e6" }}>User Name</label>
+      {/* Two-column wrapper */}
+      <div className="form-two-col">
+        {/* LEFT (4 fields) */}
+        <div className="form-stack">
+          <div className="form-group">
+            <span className="form-label">User Name</span>
             <input
-              className="input mt-1"
+              className="input"
               name="user_name"
               placeholder="User Name"
               value={formData.user_name}
@@ -203,10 +190,10 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
             />
           </div>
 
-          <div>
-            <label className="text-sm" style={{ color: "#b7c2e6" }}>Job Type</label>
+          <div className="form-group">
+            <span className="form-label">Job Type</span>
             <select
-              className="input mt-1"
+              className="input"
               name="job_type"
               value={formData.job_type}
               onChange={handleChange}
@@ -219,10 +206,10 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
             </select>
           </div>
 
-          <div>
-            <label className="text-sm" style={{ color: "#b7c2e6" }}>Task Name</label>
+          <div className="form-group">
+            <span className="form-label">Task Name</span>
             <select
-              className="input mt-1"
+              className="input"
               name="task_name"
               value={formData.task_name}
               onChange={handleChange}
@@ -238,10 +225,10 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
             </select>
           </div>
 
-          <div>
-            <label className="text-sm" style={{ color: "#b7c2e6" }}>Status</label>
+          <div className="form-group">
+            <span className="form-label">Status</span>
             <select
-              className="input mt-1"
+              className="input"
               name="status"
               value={formData.status || "Open"}
               onChange={handleChange}
@@ -252,12 +239,12 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
           </div>
         </div>
 
-        {/* RIGHT COLUMN — 5 fields */}
-        <div className="grid gap-3">
-          <div>
-            <label className="text-sm" style={{ color: "#b7c2e6" }}>Quantity</label>
+        {/* RIGHT (5 fields) */}
+        <div className="form-stack">
+          <div className="form-group">
+            <span className="form-label">Quantity</span>
             <input
-              className="input mt-1"
+              className="input"
               name="quantity"
               type="number"
               min={1}
@@ -269,10 +256,10 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
             />
           </div>
 
-          <div>
-            <label className="text-sm" style={{ color: "#b7c2e6" }}>Unit</label>
+          <div className="form-group">
+            <span className="form-label">Unit</span>
             <input
-              className="input mt-1"
+              className="input"
               name="unit"
               placeholder="Unit (ea, set, week, task)"
               value={formData.unit || ""}
@@ -280,10 +267,10 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
             />
           </div>
 
-          <div>
-            <label className="text-sm" style={{ color: "#b7c2e6" }}>Start Date</label>
+          <div className="form-group">
+            <span className="form-label">Start Date</span>
             <input
-              className="input mt-1"
+              className="input"
               name="start_date"
               type="date"
               value={formData.start_date || ""}
@@ -291,10 +278,10 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
             />
           </div>
 
-          <div>
-            <label className="text-sm" style={{ color: "#b7c2e6" }}>Due Date</label>
+          <div className="form-group">
+            <span className="form-label">Due Date</span>
             <input
-              className="input mt-1"
+              className="input"
               name="due_date"
               type="date"
               value={formData.due_date || ""}
@@ -302,10 +289,10 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
             />
           </div>
 
-          <div>
-            <label className="text-sm" style={{ color: "#b7c2e6" }}>Description</label>
+          <div className="form-group">
+            <span className="form-label">Description</span>
             <textarea
-              className="input mt-1"
+              className="input"
               name="description"
               placeholder="Description"
               value={formData.description || ""}
@@ -316,14 +303,12 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
         </div>
       </div>
 
-      {/* Bottom row: computed field + actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end">
-        <div>
-          <label className="text-sm" style={{ color: "#b7c2e6" }}>
-            Estimated Duration (hrs)
-          </label>
+      {/* Bottom: estimated + actions */}
+      <div className="form-two-col" style={{ alignItems: "end" }}>
+        <div className="form-group">
+          <span className="form-label">Estimated Duration (hrs)</span>
           <input
-            className="input mt-1"
+            className="input"
             name="estimated_duration"
             type="number"
             step="0.1"
@@ -335,7 +320,7 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
           />
         </div>
 
-        <div className="flex gap-2 justify-end">
+        <div className="flex gap-2" style={{ justifyContent: "flex-end" }}>
           <button type="submit" className="btn primary">
             {editJob ? "Update Job" : "Add Job"}
           </button>

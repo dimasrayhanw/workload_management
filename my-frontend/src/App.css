@@ -350,3 +350,31 @@ tbody tr:nth-child(even) {
   flex-direction: column;
   gap: 12px;
 }
+
+/* ---------- JobForm two-column layout ---------- */
+.form-two-col {
+  display: grid;
+  grid-template-columns: 1fr;     /* mobile: single column */
+  gap: 12px;
+}
+@media (min-width: 900px) {       /* desktop/tablet: two columns */
+  .form-two-col {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.form-stack {                      /* stacks fields inside a column */
+  display: grid;
+  gap: 12px;
+}
+
+.form-group {                      /* label + control vertical stack */
+  display: flex;
+  flex-direction: column;
+}
+
+.form-label {
+  font-size: 13px;
+  color: #b7c2e6;                 /* matches your theme */
+  margin-bottom: 6px;
+}
