@@ -204,9 +204,11 @@ tbody tr:nth-child(even) {
   background: #0f173c !important;
 }
 
-/* Keep the overdue highlight authoritative */
-tbody tr.row-overdue {
+/* Overdue row must win over zebra striping */
+tbody tr.row-overdue,
+tbody tr.row-overdue > td {
   background: var(--overdue) !important;
+  color: var(--text) !important;
 }
 
 /* Optional: ensure hover still shows on top of the enforced colors */

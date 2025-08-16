@@ -20,19 +20,27 @@ const startOfTodayLocal = () => {
 };
 
 /** Parse strict "YYYY-MM-DD" as a **local** midnight Date. */
-const parseIsoDateLocal = (s?: string | null) => {
-  if (!s) return null;
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim());
-  if (!m) return null;
-  const y = +m[1], mo = +m[2] - 1, d = +m[3];
-  return new Date(y, mo, d); // local midnight
+const parseDateLocal = (raw?: string | null) => {
+  if (!raw) return null;
+  const s = String(raw).trim();
+
+  // YYYY-MM-DD or YYYY/MM/DD
+  let m = /^(\d{4})[-/](\d{2})[-/](\d{2})$/.exec(s);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+
+  // DD/MM/YYYY
+  m = /^(\d{2})[/](\d{2})[/](\d{4})$/.exec(s);
+  if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+
+  return null; // unrecognized
 };
 
-/** Overdue = due date strictly before today (local) and not Done */
+/** Overdue = due date before today (local) and not Done */
 const isOverdue = (j: Job) => {
-  const due = parseIsoDateLocal(j.due_date);
-  if (!due) return false; // no due date = not overdue
-  return due < startOfTodayLocal() && (j.status ?? "Open").toLowerCase() !== "done";
+  const dd = parseDateLocal(j.due_date);
+  if (!dd) return false;
+  const status = String(j.status ?? "Open").toLowerCase();
+  return dd < startOfTodayLocal() && status !== "done";
 };
 
 const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
@@ -71,25 +79,25 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
     if (fStatus) r = r.filter(j => (j.status || "Open") === fStatus);
 
     // date filters (local, tolerant if row has no date)
-    const startFromD = parseIsoDateLocal(fStartFrom);
-    const startToD   = parseIsoDateLocal(fStartTo);
-    const dueFromD   = parseIsoDateLocal(fDueFrom);
-    const dueToD     = parseIsoDateLocal(fDueTo);
+    const startFromD = parseDateLocal(fStartFrom);
+    const startToD   = parseDateLocal(fStartTo);
+    const dueFromD   = parseDateLocal(fDueFrom);
+    const dueToD     = parseDateLocal(fDueTo);
 
     if (startFromD) r = r.filter(j => {
-      const d = parseIsoDateLocal(j.start_date);
+      const d = parseDateLocal(j.start_date);
       return !d || d >= startFromD;
     });
     if (startToD) r = r.filter(j => {
-      const d = parseIsoDateLocal(j.start_date);
+      const d = parseDateLocal(j.start_date);
       return !d || d <= startToD;
     });
     if (dueFromD) r = r.filter(j => {
-      const d = parseIsoDateLocal(j.due_date);
+      const d = parseDateLocal(j.due_date);
       return !d || d >= dueFromD;
     });
     if (dueToD) r = r.filter(j => {
-      const d = parseIsoDateLocal(j.due_date);
+      const d = parseDateLocal(j.due_date);
       return !d || d <= dueToD;
     });
 
