@@ -3,28 +3,33 @@ import os
 from sqlalchemy import create_engine, Column, Integer, String, Text, Float
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Read from env if present (Render/production), otherwise default to local SQLite
-RAW_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./workload.db")
+# 1) Read DATABASE_URL (Render env) or fallback to local SQLite
+raw_url = os.getenv("DATABASE_URL", "sqlite:///./workload.db")
 
-# Render/Neon sometimes gives "postgres://" – SQLAlchemy expects "postgresql+psycopg2://"
-if RAW_DATABASE_URL.startswith("postgres://"):
-    RAW_DATABASE_URL = RAW_DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
-elif RAW_DATABASE_URL.startswith("postgresql://") and "+psycopg2" not in RAW_DATABASE_URL:
-    RAW_DATABASE_URL = RAW_DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+# 2) Normalize postgres scheme for SQLAlchemy
+#    (Render/Neon may give 'postgres://'; SQLAlchemy wants 'postgresql+psycopg2://')
+if raw_url.startswith("postgres://"):
+    raw_url = raw_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif raw_url.startswith("postgresql://") and "+psycopg2" not in raw_url:
+    raw_url = raw_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
-SQLALCHEMY_DATABASE_URL = RAW_DATABASE_URL
+# 3) Ensure SSL for hosted Postgres if not already present
+if raw_url.startswith("postgresql+psycopg2://") and "sslmode=" not in raw_url:
+    sep = "&" if "?" in raw_url else "?"
+    raw_url = f"{raw_url}{sep}sslmode=require"
 
-# SQLite needs a special connect arg; Postgres/others do not
-connect_args = {"check_same_thread": False} if SQLALCHEMY_DATABASE_URL.startswith("sqlite") else {}
+DATABASE_URL = raw_url
+
+# 4) SQLite needs a special connect arg; Postgres does not
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    echo=False,
+    DATABASE_URL,
     future=True,
     pool_pre_ping=True,
+    echo=False,
     connect_args=connect_args,
 )
-
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False, future=True)
 Base = declarative_base()
 
@@ -38,8 +43,8 @@ class WorkloadItemDB(Base):
     task_name = Column(String, index=True)
     description = Column(Text, nullable=True)
     quantity = Column(Integer, default=1)
-    estimated_duration = Column(Float, nullable=True)  # always stored in hours
+    estimated_duration = Column(Float, nullable=True)  # hours
     unit = Column(String, nullable=True)
     start_date = Column(String, nullable=True)  # ISO date string
     due_date = Column(String, nullable=True)    # ISO date string
-    status = Column(String, nullable=True, index=True, default="Open")  # NEW
+    status = Column(String, nullable=True, index=True, default="Open")
