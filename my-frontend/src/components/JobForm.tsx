@@ -233,7 +233,7 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full grid gap-3 mb-4">
+    <form onSubmit={handleSubmit} className="w-full grid gap-3 mb-4 form-surface">
       {/* Row: User & Status */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <input
