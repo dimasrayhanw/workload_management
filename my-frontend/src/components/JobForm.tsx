@@ -261,7 +261,7 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
             <input
               className="input"
               name="unit"
-              placeholder="Unit (ea, set, week, task)"
+              placeholder="Unit (ea, set, task, model, etc.)"
               value={formData.unit || ""}
               onChange={handleChange}
             />
