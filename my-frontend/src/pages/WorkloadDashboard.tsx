@@ -10,7 +10,24 @@ import {
 } from "recharts";
 import "../App.css";
 
-const COLORS = ["#6ea8fe","#9b8dfc","#4dd4ac","#ffd166","#ff8fab","#a1e3ff","#b2f7ef","#f7a072"];
+const COLORS = ["#6ea8fe", "#9b8dfc", "#4dd4ac", "#ffd166", "#ff8fab", "#a1e3ff", "#b2f7ef", "#f7a072"];
+
+/** Rotated/custom tick for the X axis (always render, truncate long names) */
+const AxisTick: React.FC<any> = ({ x, y, payload }) => {
+  const label = String(payload?.value ?? "");
+  const short = label.length > 14 ? label.slice(0, 12) + "…" : label;
+  return (
+    <text
+      x={x}
+      y={y + 12}
+      textAnchor="end"
+      transform={`rotate(-35, ${x}, ${y + 12})`}
+      style={{ fontSize: 12, fill: "#b7c2e6" }}
+    >
+      {short}
+    </text>
+  );
+};
 
 const WorkloadDashboard: React.FC = () => {
   const [jobs, setJobs] = React.useState<Job[]>([]);
@@ -57,7 +74,7 @@ const WorkloadDashboard: React.FC = () => {
         <div className="chips">
           <span className="chip badge">Jobs: {jobs.length}</span>
           <span className="chip badge">
-            Users: {new Set(jobs.map(j => (j.user_name||"").toLowerCase())).size}
+            Users: {new Set(jobs.map(j => (j.user_name || "").toLowerCase())).size}
           </span>
         </div>
       </div>
@@ -69,12 +86,25 @@ const WorkloadDashboard: React.FC = () => {
           <div className="section-title">Hours by User</div>
           <div style={{ width: "100%", height: 260 }}>
             <ResponsiveContainer>
-              <BarChart data={byUser}>
-                <XAxis dataKey="user" />
+              <BarChart
+                data={byUser}
+                margin={{ top: 8, right: 12, left: 0, bottom: 48 }}
+              >
+                <XAxis
+                  dataKey="user"
+                  interval={0}        // show every label
+                  height={52}         // room for rotated labels
+                  tickMargin={8}
+                  tickLine={false}
+                  axisLine={false}
+                  tick={<AxisTick />} // rotated + truncated
+                />
                 <YAxis />
                 <Tooltip />
                 <Bar dataKey="hours">
-                  {byUser.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  {byUser.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -88,7 +118,9 @@ const WorkloadDashboard: React.FC = () => {
             <ResponsiveContainer>
               <PieChart>
                 <Pie data={byType} dataKey="value" nameKey="name" outerRadius={90}>
-                  {byType.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  {byType.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
                 </Pie>
                 <Legend />
                 <Tooltip />
