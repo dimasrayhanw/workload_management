@@ -34,11 +34,7 @@ const TASKS_BY_TYPE: Record<JobType, string[]> = {
     "GA",
     "Asset",
   ],
-  DX: [
-    // If you want specific DX tasks, list them here.
-    // When left empty, we’ll show a single “General DX Work” option.
-    "General DX Work",
-  ],
+  DX: ["General DX Work"],
 };
 
 /** Unit suggestions by exact (JobType|Task) match, with a sane per-type fallback */
@@ -127,8 +123,8 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
         estimated_duration: Number(editJob.estimated_duration || 0),
       });
     } else {
-      // reset if switching from edit to add
-      setFormData((prev) => ({
+      // reset if switching from edit to add (remove unused `prev`)
+      setFormData({
         user_name: "",
         job_type: "",
         task_name: "",
@@ -139,7 +135,7 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
         start_date: "",
         due_date: "",
         status: "Open",
-      }));
+      });
     }
   }, [editJob]);
 
@@ -202,7 +198,6 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
     // Server will compute estimated_duration based on (type, task, quantity)
     const payload = {
       ...formData,
-      // ensure correct JobType in payload
       job_type: formData.job_type as JobType,
     };
 
