@@ -1,88 +1,231 @@
-/* =======================
-   TABLE THEME (final)
-   ======================= */
 
-/* Helpful vars (optional) */
 :root{
-  --row-odd: #0c1331;
-  --row-even: #0f173c;
-  --overdue-solid: #ff6b6b; /* solid red for overdue rows */
+  --bg: #0b1020;
+  --panel: #121830;
+  --panel-2: #0f152b;
+  --text: #e8ecf7;
+  --muted: #a9b2cc;
+  --primary: #6ea8fe;
+  --primary-600:#5b8fff;
+  --danger: #ff6b6b;
+  --success:#4dd4ac;
+  --warn:#ffd166;
+  --border: #212a4a;
+  --chip-open:#1f8efa22;
+  --chip-done:#4dd4ac22;
+  --overdue:#ff6b6b22;
+  --focus: 0 0 0 3px #5b8fff44;
+  color-scheme: dark;
 }
 
-/* Table container surface */
-.table-wrap {
-  overflow: auto;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: #0d1433; /* dark surface behind rows */
+*{ box-sizing:border-box; }
+
+html, body, #root{
+  height:100%;
+  background: radial-gradient(1500px 650px at 20% -20%, #1a2142 0%, #0b1020 45%, #090d1a 100%), var(--bg);
+  color:var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
+  margin:0;
 }
 
-/* Let rows control their color */
-.table-wrap table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+/* Layout */
+.container{
+  max-width:1100px;
+  margin: 28px auto 56px;
+  padding: 0 16px;
+}
+.header{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:14px;
+}
+.h1{
+  font-size: clamp(20px, 2.6vw, 30px);
+  font-weight:700;
+  letter-spacing:.2px;
+}
+.sub{
+  color:var(--muted);
+  font-size:14px;
+}
+
+/* Make all forms transparent by default */
+form {
   background: transparent;
 }
 
-/* Sticky header */
-.table-wrap thead th {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  text-align: left;
-  font-size: 13px;
-  color: #bcc6e6 !important;
-  background: linear-gradient(180deg, #0e1639, #0b1130) !important;
-  border-bottom: 1px solid #1b2344;
-  padding: 10px 12px;
+
+/* Dark surface just for the Add/Edit form */
+.form-surface {
+  background: #1b1b2f;               /* same tone as your cards */
+  color: #f0f0f0;
+  border: 1px solid #2a2a3c;
+  border-radius: 12px;
+  padding: 16px;
 }
 
-/* Cells */
-.table-wrap td {
-  border-bottom: 1px solid #121a3b;
-  padding: 10px 12px;
-  font-size: 14px;
+/* Inputs in that form */
+.form-surface input,
+.form-surface select,
+.form-surface textarea {
+  background: #2c2c3e;
+  color: #ffffff;
+  border: 1px solid #444;
+  border-radius: 10px;
 }
 
+.form-surface input::placeholder,
+.form-surface textarea::placeholder {
+  color: #9aa0a6;
+}
+
+/* Cards */
+/* Dark card background for consistency */
+.card {
+  background-color: #1e1e2f; /* Dark navy/gray */
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+  color: #ffffff; /* Ensure text is visible */
+}
+
+/* Input fields contrast */
+.card input,
+.card select,
+.card textarea {
+  background-color: #2b2b3c; /* Dark input */
+  color: #fff;
+  border: 1px solid #444;
+}
+
+.card input::placeholder,
+.card textarea::placeholder {
+  color: #aaa; /* lighter placeholder */
+}
+
+/* Controls */
+.row{ display:flex; gap:8px; flex-wrap:wrap; }
+.input, select, textarea{
+  background:#0b1130;
+  border:1px solid #1b2344;
+  color:var(--text);
+  padding:10px 12px;
+  border-radius:10px;
+  outline:none;
+  transition:.18s border, .18s box-shadow, .18s transform;
+}
+.input:focus, select:focus, textarea:focus{
+  border-color:#31407a;
+  box-shadow: var(--focus);
+}
+select{ padding-right:30px; }
+textarea{ resize:vertical; min-height:80px; }
+
+/* Buttons */
+.btn{
+  background: linear-gradient(180deg, #273056, #1b2344);
+  border:1px solid #2b376d;
+  color:var(--text);
+  padding:10px 14px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:600;
+  transition:.18s transform, .18s opacity, .18s filter;
+}
+.btn:hover{ transform: translateY(-1px); filter:brightness(1.06); }
+.btn:active{ transform: translateY(0); }
+.btn.primary{
+  background: linear-gradient(180deg, var(--primary), var(--primary-600));
+  border-color:#446ee9;
+  color:#071027;
+}
+.btn.danger{
+  background: linear-gradient(180deg, #ff7f7f, #ff6b6b);
+  border-color:#e05555;
+  color:#2b0d0d;
+}
+.btn.ghost{
+  background:transparent; border:1px dashed #344272; color:var(--muted);
+}
+.btn.small{ padding:6px 10px; border-radius:8px; font-size:13px; }
+
+/* Pills / chips */
+.chips{ display:flex; gap:8px; flex-wrap:wrap; }
+.chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:12px; letter-spacing:.2px;
+  border:1px solid var(--border);
+  background:#0b1130;
+  color:var(--muted);
+}
+.chip.badge{ background: #172047; border-color:#283262; color:#bfc8e6; }
+.chip.open{ background: var(--chip-open); color:#7db7ff; border-color:#2556a7; }
+.chip.done{ background: var(--chip-done); color:#50e0b6; border-color:#2f7a64; }
+
+/* Table */
+.table-wrap{ overflow:auto; border-radius:14px; border:1px solid var(--border); }
+table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  background: #0d1433;
+}
+thead th{
+  position:sticky; top:0; z-index:5;
+  text-align:left;
+  font-size:13px; color:#bcc6e6;
+  background: linear-gradient(180deg, #0e1639, #0b1130);
+  border-bottom:1px solid #1b2344;
+  padding:10px 12px;
+}
+tbody td{
+  border-bottom:1px solid #121a3b;
+  padding:10px 12px;
+  font-size:14px;
+}
+tbody tr:nth-child(odd){ background:#0c1331; }
+tbody tr:hover{ background:#0f173c; }
+/* --- Harden table theming --- */
+.table-wrap {
+  background: #0d1433;           /* dark surface behind the rows */
+}
+
+table {
+  background: transparent;       /* let rows control the color */
+}
+
+/* Set explicit colors for ALL rows, not just odd ones */
+tbody tr { 
+  background: #0c1331 !important; 
+  color: var(--text);
+}
 /* Normal zebra striping */
-.table-wrap tbody tr:nth-child(odd)  { background: var(--row-odd) !important;  color: var(--text) !important; }
-.table-wrap tbody tr:nth-child(even) { background: var(--row-even) !important; color: var(--text) !important; }
-
-/* Hover (for non-overdue rows) */
-.table-wrap tbody tr:hover { background: #132055 !important; }
-
-/* ---------- OVERDUE: solid red, no zebra bleed ---------- */
-.table-wrap tbody tr.row-overdue,
-.table-wrap tbody tr.row-overdue td {
-  background: var(--overdue-solid) !important;
-  color: #ffffff !important;
+tbody tr:nth-child(even) {
+  background: var(--row-even);
+}
+tbody tr:nth-child(odd) {
+  background: var(--row-odd);
 }
 
-/* Kill nth-child striping on overdue rows explicitly */
-.table-wrap tbody tr.row-overdue:nth-child(odd),
-.table-wrap tbody tr.row-overdue:nth-child(even) {
-  background: var(--overdue-solid) !important;
+/* Force overdue rows to ignore zebra */
+tbody tr.row-overdue {
+  background: var(--overdue) !important;
+}
+tbody tr.row-overdue td {
+  background: var(--overdue) !important;
+  color: var(--text) !important;
 }
 
-/* Keep hover consistent for overdue too */
-.table-wrap tbody tr.row-overdue:hover,
-.table-wrap tbody tr.row-overdue:hover td {
-  background: var(--overdue-solid) !important;
+/* Optional: ensure hover still shows on top of the enforced colors */
+tbody tr:hover {
+  background: #132055 !important;
 }
+.cell-right{ text-align:right; }
+.nowrap{ white-space:nowrap; }
 
-/* (Optional) footer/pagination ghost row protection */
-.table-wrap tfoot tr,
-.table-wrap tr:empty,
-.table-wrap tr td:empty {
-  background: var(--row-odd) !important;
-}
-
-/* Utility alignments */
-.cell-right { text-align: right; }
-.nowrap { white-space: nowrap; }
-
-/* Status chips (unchanged) */
+/* Row accents */
+.row-overdue{ background: var(--overdue) !important; }
 .status{
   font-weight:700; font-size:12px; letter-spacing:.3px;
   padding:6px 10px; border-radius:999px;
@@ -90,3 +233,156 @@
 }
 .status.Open{ background:#12224e; color:#88b4ff; border:1px solid #26448e; }
 .status.Done{ background:#123d33; color:#5fe0bf; border:1px solid #2a7a66; }
+
+/* Charts bar */
+.charts{
+  display:flex; gap:12px; align-items:stretch;
+}
+.charts > .card{ flex:1; min-width:280px; }
+
+/* Helpers */
+.section-title{
+  margin:6px 0 8px; font-size:14px; color:#b7c2e6; font-weight:700;
+  letter-spacing:.3px; text-transform:uppercase;
+}
+.toolbar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.spacer{ flex:1; }
+
+/* Dark card everywhere */
+.card,
+.card.pad,
+.card.pad.charts {
+  background: var(--panel);            /* #121830 */
+  color: var(--text);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);     /* #212a4a */
+  box-shadow: 0 2px 10px rgba(0,0,0,.35);
+}
+
+/* Ensure any form inside a card doesn't paint white */
+.card form {
+  background: transparent !important;
+}
+
+/* Ensure all table rows always have dark background */
+tbody tr,
+tfoot tr,
+thead tr,
+tr {
+  background: #0c1331 !important;
+  color: var(--text) !important;
+}
+
+/* Even/odd differentiation */
+tbody tr:nth-child(even) {
+  background: #0f173c !important;
+}
+
+/* Scope row coloring strictly to the data table */
+.table-wrap table tr,
+.table-wrap table thead tr,
+.table-wrap table tbody tr,
+.table-wrap table tfoot tr {
+  background: #0c1331 !important;
+  color: var(--text) !important;
+}
+
+/* Even rows */
+.table-wrap table tbody tr:nth-child(even) {
+  background: #0f173c !important;
+}
+
+/* Make cells inherit row background (prevents white cell bleed) */
+.table-wrap table th,
+.table-wrap table td {
+  background: inherit !important;
+  color: inherit !important;
+}
+
+/* Keep the sticky header styling authoritative */
+.table-wrap thead th {
+  background: linear-gradient(180deg, #0e1639, #0b1130) !important;
+  color: #bcc6e6 !important;
+}
+
+/* Overdue highlight wins */
+.table-wrap tbody tr.row-overdue {
+  background: var(--overdue) !important;
+}
+
+/* Hover on top of enforced colors */
+.table-wrap tbody tr:hover {
+  background: #132055 !important;
+}
+
+/* Fix footer/pagination ghost row/cell */
+.table-wrap tfoot tr,
+.table-wrap tr:empty,
+.table-wrap tr td:empty {
+  background: #0c1331 !important;
+}
+
+.job-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem; /* spacing between columns */
+}
+.form-container label {
+  display: block;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+.form-container input,
+.form-container select,
+.form-container textarea {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.form-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-full {
+  grid-column: 1 / -1; /* spans both columns */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---------- JobForm two-column layout ---------- */
+.form-two-col {
+  display: grid;
+  grid-template-columns: 1fr;     /* mobile: single column */
+  gap: 12px;
+}
+@media (min-width: 900px) {       /* desktop/tablet: two columns */
+  .form-two-col {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.form-stack {                      /* stacks fields inside a column */
+  display: grid;
+  gap: 12px;
+}
+
+.form-group {                      /* label + control vertical stack */
+  display: flex;
+  flex-direction: column;
+}
+
+.form-label {
+  font-size: 13px;
+  color: #b7c2e6;                 /* matches your theme */
+  margin-bottom: 6px;
+}
