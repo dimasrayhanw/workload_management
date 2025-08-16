@@ -12,7 +12,20 @@ type Props = {
 type SortKey = keyof Job | "estimated_duration" | "quantity";
 type Sort = { key: SortKey; dir: "asc" | "desc" } | null;
 
-const todayISO = () => new Date().toISOString().slice(0, 10);
+/** ---- Local date helpers (avoid UTC drift) ---- */
+const startOfTodayLocal = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+/** Parse "YYYY-MM-DD" into a local midnight Date */
+const parseIsoDateLocal = (s?: string | null) => {
+  if (!s) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s.trim());
+  if (!m) return null;
+  const y = +m[1], mo = +m[2] - 1, d = +m[3];
+  return new Date(y, mo, d);
+};
 
 const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
   // filters
@@ -42,21 +55,31 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
 
   const filtered = useMemo(() => {
     let r = jobs.slice();
-    if (fUser) r = r.filter((j) => (j.user_name || "").toLowerCase().includes(fUser.toLowerCase()));
-    if (fType) r = r.filter((j) => j.job_type === fType);
-    if (fTask) r = r.filter((j) => (j.task_name || "").toLowerCase().includes(fTask.toLowerCase()));
-    if (fStatus) r = r.filter((j) => (j.status || "Open") === fStatus);
-    if (fStartFrom) r = r.filter((j) => !j.start_date || j.start_date >= fStartFrom);
-    if (fStartTo) r = r.filter((j) => !j.start_date || j.start_date <= fStartTo);
-    if (fDueFrom) r = r.filter((j) => !j.due_date || j.due_date >= fDueFrom);
-    if (fDueTo) r = r.filter((j) => !j.due_date || j.due_date <= fDueTo);
 
+    // text/status filters
+    if (fUser)  r = r.filter((j) => (j.user_name || "").toLowerCase().includes(fUser.toLowerCase()));
+    if (fType)  r = r.filter((j) => j.job_type === fType);
+    if (fTask)  r = r.filter((j) => (j.task_name || "").toLowerCase().includes(fTask.toLowerCase()));
+    if (fStatus) r = r.filter((j) => (j.status || "Open") === fStatus);
+
+    // date filters (local)
+    const startFromD = parseIsoDateLocal(fStartFrom);
+    const startToD   = parseIsoDateLocal(fStartTo);
+    const dueFromD   = parseIsoDateLocal(fDueFrom);
+    const dueToD     = parseIsoDateLocal(fDueTo);
+
+    if (startFromD) r = r.filter((j) => { const d = parseIsoDateLocal(j.start_date); return !d || d >= startFromD; });
+    if (startToD)   r = r.filter((j) => { const d = parseIsoDateLocal(j.start_date); return !d || d <= startToD;   });
+    if (dueFromD)   r = r.filter((j) => { const d = parseIsoDateLocal(j.due_date);   return !d || d >= dueFromD;   });
+    if (dueToD)     r = r.filter((j) => { const d = parseIsoDateLocal(j.due_date);   return !d || d <= dueToD;     });
+
+    // sort
     if (sort) {
       r.sort((a: any, b: any) => {
         const A = a[sort.key] ?? "";
         const B = b[sort.key] ?? "";
         if (A < B) return sort.dir === "asc" ? -1 : 1;
-        if (A > B) return sort.dir === "asc" ? 1 : -1;
+        if (A > B) return sort.dir === "asc" ?  1 : -1;
         return 0;
       });
     }
@@ -69,13 +92,10 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
   const allOnPageSelected = pageRows.length > 0 && pageRows.every((j) => selectedIds.includes(j.id!));
   const toggleAllOnPage = () => {
     const ids = pageRows.map((j) => j.id!).filter(Boolean) as number[];
-    if (allOnPageSelected) {
-      setSelectedIds((prev) => prev.filter((id) => !ids.includes(id)));
-    } else {
-      setSelectedIds((prev) => [...new Set([...prev, ...ids])]);
-    }
+    setSelectedIds((prev) =>
+      allOnPageSelected ? prev.filter((id) => !ids.includes(id)) : [...new Set([...prev, ...ids])]
+    );
   };
-
   const toggleOne = (id?: number) => {
     if (!id) return;
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -98,11 +118,7 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
     if (selectedIds.length === 0) return;
     if (!window.confirm(`Delete ${selectedIds.length} selected job(s)?`)) return;
     for (const id of selectedIds) {
-      try {
-        await api.deleteJob(id);
-      } catch {
-        // continue
-      }
+      try { await api.deleteJob(id); } catch {}
     }
     setSelectedIds([]);
     onJobsUpdated();
@@ -113,40 +129,41 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
     return Number.isFinite(v) ? (v % 1 === 0 ? `${v.toFixed(0)} h` : `${v.toFixed(1)} h`) : "-";
   };
 
+  /** Overdue = due date before today (local) and not Done */
+  const isOverdue = (j: Job) => {
+    const dd = parseIsoDateLocal(j.due_date);
+    if (!dd) return false;
+    return dd < startOfTodayLocal() && (j.status ?? "Open").toLowerCase() !== "done";
+  };
+
+  /** Export currently filtered jobs to CSV */
   const exportCSV = () => {
-    const rows = [
-      [
-        "User Name",
-        "Job Type",
-        "Task Name",
-        "Description",
-        "Quantity",
-        "Unit",
-        "Est. Duration (hrs)",
-        "Start Date",
-        "Due Date",
-        "Status",
-      ],
-    ];
-    filtered.forEach((j) => {
-      rows.push([
-        j.user_name || "",
-        j.job_type || "",
-        j.task_name || "",
-        j.description || "",
-        String(j.quantity ?? ""),
-        j.unit || "",
-        typeof j.estimated_duration === "number" && isFinite(j.estimated_duration)
-          ? j.estimated_duration % 1 === 0
-            ? j.estimated_duration.toFixed(0)
-            : j.estimated_duration.toFixed(1)
-          : "",
-        j.start_date || "",
-        j.due_date || "",
-        j.status || "Open",
-      ]);
-    });
-    const csv = rows.map((r) => r.map((x) => `"${String(x).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const rows = filtered.map((j) => ({
+      User: j.user_name,
+      Type: j.job_type,
+      Task: j.task_name,
+      Description: j.description,
+      Quantity: j.quantity,
+      Unit: j.unit,
+      "Est. Duration (hrs)": j.estimated_duration,
+      "Start Date": j.start_date,
+      "Due Date": j.due_date,
+      Status: j.status,
+    }));
+
+    if (rows.length === 0) {
+      alert("No jobs to export");
+      return;
+    }
+
+    const headers = Object.keys(rows[0]);
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) =>
+        headers.map((h) => `"${String(r[h as keyof typeof r] ?? "").replace(/"/g, '""')}"`).join(",")
+      ),
+    ].join("\n");
+
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -155,8 +172,6 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
     a.click();
     URL.revokeObjectURL(url);
   };
-
-  const isOverdue = (j: Job) => j.due_date && j.due_date < todayISO() && (j.status || "Open") !== "Done";
 
   return (
     <div>
@@ -181,18 +196,10 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
       </div>
 
       <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(4, minmax(0,1fr))", marginBottom: 8 }}>
-        <label>
-          Start From <input type="date" value={fStartFrom} onChange={(e) => setFStartFrom(e.target.value)} />
-        </label>
-        <label>
-          Start To <input type="date" value={fStartTo} onChange={(e) => setFStartTo(e.target.value)} />
-        </label>
-        <label>
-          Due From <input type="date" value={fDueFrom} onChange={(e) => setFDueFrom(e.target.value)} />
-        </label>
-        <label>
-          Due To <input type="date" value={fDueTo} onChange={(e) => setFDueTo(e.target.value)} />
-        </label>
+        <label>Start From <input type="date" value={fStartFrom} onChange={(e) => setFStartFrom(e.target.value)} /></label>
+        <label>Start To   <input type="date" value={fStartTo}   onChange={(e) => setFStartTo(e.target.value)} /></label>
+        <label>Due From   <input type="date" value={fDueFrom}   onChange={(e) => setFDueFrom(e.target.value)} /></label>
+        <label>Due To     <input type="date" value={fDueTo}     onChange={(e) => setFDueTo(e.target.value)} /></label>
       </div>
 
       {selectedIds.length > 0 && (
@@ -206,35 +213,17 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
       <table>
         <thead>
           <tr>
-            <th>
-              <input type="checkbox" checked={allOnPageSelected} onChange={toggleAllOnPage} />
-            </th>
-            <th onClick={() => toggleSort("user_name")} style={{ cursor: "pointer" }}>
-              User Name
-            </th>
-            <th onClick={() => toggleSort("job_type")} style={{ cursor: "pointer" }}>
-              Job Type
-            </th>
-            <th onClick={() => toggleSort("task_name")} style={{ cursor: "pointer" }}>
-              Task Name
-            </th>
+            <th><input type="checkbox" checked={allOnPageSelected} onChange={toggleAllOnPage} /></th>
+            <th onClick={() => toggleSort("user_name")} style={{ cursor: "pointer" }}>User Name</th>
+            <th onClick={() => toggleSort("job_type")} style={{ cursor: "pointer" }}>Job Type</th>
+            <th onClick={() => toggleSort("task_name")} style={{ cursor: "pointer" }}>Task Name</th>
             <th>Description</th>
-            <th onClick={() => toggleSort("quantity")} style={{ cursor: "pointer" }}>
-              Quantity
-            </th>
+            <th onClick={() => toggleSort("quantity")} style={{ cursor: "pointer" }}>Quantity</th>
             <th>Unit</th>
-            <th onClick={() => toggleSort("estimated_duration")} style={{ cursor: "pointer" }}>
-              Est. Duration (hrs)
-            </th>
-            <th onClick={() => toggleSort("start_date")} style={{ cursor: "pointer" }}>
-              Start
-            </th>
-            <th onClick={() => toggleSort("due_date")} style={{ cursor: "pointer" }}>
-              Due
-            </th>
-            <th onClick={() => toggleSort("status")} style={{ cursor: "pointer" }}>
-              Status
-            </th>
+            <th onClick={() => toggleSort("estimated_duration")} style={{ cursor: "pointer" }}>Est. Duration (hrs)</th>
+            <th onClick={() => toggleSort("start_date")} style={{ cursor: "pointer" }}>Start</th>
+            <th onClick={() => toggleSort("due_date")} style={{ cursor: "pointer" }}>Due</th>
+            <th onClick={() => toggleSort("status")} style={{ cursor: "pointer" }}>Status</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -242,9 +231,7 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
         <tbody>
           {pageRows.map((job) => (
             <tr key={job.id} className={isOverdue(job) ? "row-overdue" : undefined}>
-              <td>
-                <input type="checkbox" checked={selectedIds.includes(job.id!)} onChange={() => toggleOne(job.id)} />
-              </td>
+              <td><input type="checkbox" checked={selectedIds.includes(job.id!)} onChange={() => toggleOne(job.id)} /></td>
               <td>{job.user_name}</td>
               <td>{job.job_type}</td>
               <td>{job.task_name}</td>
@@ -254,59 +241,29 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
               <td className="cell-right nowrap">{fmtHours(job.estimated_duration)}</td>
               <td>{job.start_date || "-"}</td>
               <td>{job.due_date || "-"}</td>
-              <td>
-                <span className={`status ${job.status || "Open"}`}>{job.status || "Open"}</span>
-              </td>
+              <td><span className={`status ${job.status || "Open"}`}>{job.status || "Open"}</span></td>
               <td>
                 <div className="row" style={{ gap: 6 }}>
-                  <button
-                    type="button"
-                    className="btn small"
-                    onClick={() => onEditJob(job)}
-                    title="Edit this job"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="btn danger small"
-                    onClick={() => handleDelete(job.id)}
-                    title="Delete this job"
-                  >
-                    Delete
-                  </button>
+                  <button type="button" className="btn small" onClick={() => onEditJob(job)} title="Edit this job">Edit</button>
+                  <button type="button" className="btn danger small" onClick={() => handleDelete(job.id)} title="Delete this job">Delete</button>
                 </div>
               </td>
             </tr>
           ))}
 
           {pageRows.length === 0 && (
-            <tr>
-              <td colSpan={12} style={{ textAlign: "center", padding: 16 }}>
-                No jobs
-              </td>
-            </tr>
+            <tr><td colSpan={12} style={{ textAlign: "center", padding: 16 }}>No jobs</td></tr>
           )}
         </tbody>
       </table>
 
       {/* Pagination */}
       <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
-        <button type="button" disabled={page <= 1} onClick={() => setPage(1)}>
-          ⏮
-        </button>
-        <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-          Prev
-        </button>
-        <span>
-          Page {page} / {totalPages}
-        </span>
-        <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
-          Next
-        </button>
-        <button type="button" disabled={page >= totalPages} onClick={() => setPage(totalPages)}>
-          ⏭
-        </button>
+        <button type="button" disabled={page <= 1} onClick={() => setPage(1)}>⏮</button>
+        <button type="button" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</button>
+        <span>Page {page} / {totalPages}</span>
+        <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
+        <button type="button" disabled={page >= totalPages} onClick={() => setPage(totalPages)}>⏭</button>
       </div>
     </div>
   );
