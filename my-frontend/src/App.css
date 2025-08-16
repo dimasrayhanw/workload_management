@@ -1,45 +1,4 @@
-/* #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
-} */
 :root{
   --bg: #0b1020;
   --panel: #121830;
@@ -227,7 +186,33 @@ tbody td{
 }
 tbody tr:nth-child(odd){ background:#0c1331; }
 tbody tr:hover{ background:#0f173c; }
+/* --- Harden table theming --- */
+.table-wrap {
+  background: #0d1433;           /* dark surface behind the rows */
+}
 
+table {
+  background: transparent;       /* let rows control the color */
+}
+
+/* Set explicit colors for ALL rows, not just odd ones */
+tbody tr { 
+  background: #0c1331 !important; 
+  color: var(--text);
+}
+tbody tr:nth-child(even) {
+  background: #0f173c !important;
+}
+
+/* Keep the overdue highlight authoritative */
+tbody tr.row-overdue {
+  background: var(--overdue) !important;
+}
+
+/* Optional: ensure hover still shows on top of the enforced colors */
+tbody tr:hover {
+  background: #132055 !important;
+}
 .cell-right{ text-align:right; }
 .nowrap{ white-space:nowrap; }
 
@@ -270,4 +255,62 @@ tbody tr:hover{ background:#0f173c; }
 /* Ensure any form inside a card doesn't paint white */
 .card form {
   background: transparent !important;
+}
+
+/* Ensure all table rows always have dark background */
+tbody tr,
+tfoot tr,
+thead tr,
+tr {
+  background: #0c1331 !important;
+  color: var(--text) !important;
+}
+
+/* Even/odd differentiation */
+tbody tr:nth-child(even) {
+  background: #0f173c !important;
+}
+
+/* Scope row coloring strictly to the data table */
+.table-wrap table tr,
+.table-wrap table thead tr,
+.table-wrap table tbody tr,
+.table-wrap table tfoot tr {
+  background: #0c1331 !important;
+  color: var(--text) !important;
+}
+
+/* Even rows */
+.table-wrap table tbody tr:nth-child(even) {
+  background: #0f173c !important;
+}
+
+/* Make cells inherit row background (prevents white cell bleed) */
+.table-wrap table th,
+.table-wrap table td {
+  background: inherit !important;
+  color: inherit !important;
+}
+
+/* Keep the sticky header styling authoritative */
+.table-wrap thead th {
+  background: linear-gradient(180deg, #0e1639, #0b1130) !important;
+  color: #bcc6e6 !important;
+}
+
+/* Overdue highlight wins */
+.table-wrap tbody tr.row-overdue {
+  background: var(--overdue) !important;
+}
+
+/* Hover on top of enforced colors */
+.table-wrap tbody tr:hover {
+  background: #132055 !important;
+}
+
+/* Fix footer/pagination ghost row/cell */
+.table-wrap tfoot tr,
+.table-wrap tr:empty,
+.table-wrap tr td:empty {
+  background: #0c1331 !important;
 }
