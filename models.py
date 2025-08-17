@@ -42,3 +42,16 @@ class JobHistory(BaseModel):
 
     class Config:
         orm_mode = True
+
+class JobHistoryOut(BaseModel):
+    id: int
+    job_id: int
+    action: str
+    field_changed: Optional[str] = None
+    old_value: Optional[str] = None
+    new_value: Optional[str] = None
+    created_at: str
+    created_by: Optional[str] = None
+
+    class Config:
+        from_attributes = True   # pydantic v2 (replaces orm_mode=True)

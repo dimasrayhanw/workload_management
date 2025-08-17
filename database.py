@@ -9,9 +9,12 @@ from sqlalchemy import (
     String,
     Float,
     Date,
-    Text,           # <-- add this
+    Text,
+    DateTime,
+    ForeignKey         # <-- add this
 )
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from datetime import datetime
 
 Base = declarative_base()
 
@@ -77,14 +80,16 @@ class WorkloadItemDB(Base):
 
 class JobHistoryDB(Base):
     __tablename__ = "job_history"
-    id = Column(Integer, primary_key=True)
+
+    id = Column(Integer, primary_key=True, index=True)
     job_id = Column(Integer, ForeignKey("workload_items.id", ondelete="CASCADE"), index=True, nullable=False)
 
-    # event info
-    event = Column(String, nullable=False)            # 'created' | 'updated'
-    changed_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    action = Column(Text, nullable=False)          # "Created", "Updated", "StatusChanged", etc.
+    field_changed = Column(Text, nullable=True)    # e.g. "description", "status"
+    old_value = Column(Text, nullable=True)
+    new_value = Column(Text, nullable=True)
 
-    # what changed (for 'updated'): {"field":"status","old":"Open","new":"Done"} or list of those
-    changes = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_by = Column(Text, nullable=True)
 
-    job = relationship("WorkloadItemDB", back_populates="history")
+    job = relationship("WorkloadItemDB", backref="history", passive_deletes=True)

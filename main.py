@@ -148,6 +148,26 @@ def serialize_history(h: database.JobHistoryDB):
         "changed_at": h.changed_at.isoformat() if h.changed_at else None,
         "changes": h.changes or None,
     }
+
+def log_history(
+    db: Session,
+    job_id: int,
+    action: str,
+    field_changed: Optional[str] = None,
+    old_value: Optional[str] = None,
+    new_value: Optional[str] = None,
+    created_by: Optional[str] = None,
+):
+    rec = database.JobHistoryDB(
+        job_id=job_id,
+        action=action,
+        field_changed=field_changed,
+        old_value=str(old_value) if old_value is not None else None,
+        new_value=str(new_value) if new_value is not None else None,
+        created_by=created_by,
+    )
+    db.add(rec)
+    db.commit()
 # main.py
 
 @app.exception_handler(SQLAlchemyError)
@@ -199,11 +219,15 @@ def create_job(job: models.WorkloadItem, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_item)
 
-    # history: created
-    hist = database.JobHistoryDB(
+   # history: Created
+    log_history(
+        db,
         job_id=db_item.id,
-        event="created",
-        changes=None
+        action="Created",
+        field_changed=None,
+        old_value=None,
+        new_value=job.description or "",
+        created_by=job.user_name or "system",
     )
     db.add(hist)
     db.commit()
@@ -215,27 +239,43 @@ def update_job(job_id: int, updated_job: models.WorkloadItem, db: Session = Depe
     row = db.query(database.WorkloadItemDB).filter(database.WorkloadItemDB.id == job_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Job not found")
+
     validate_dates(updated_job.start_date, updated_job.due_date)
 
-    new_payload = updated_job.dict(exclude_unset=True)
-    # recompute estimated for consistency
-    new_payload["estimated_duration"] = compute_estimated(updated_job)
+    # capture before-values for important fields
+    watched = [
+        "user_name", "job_type", "task_name", "description",
+        "quantity", "unit", "start_date", "due_date", "status",
+    ]
+    before = {k: getattr(row, k) for k in watched}
 
-    changes = diff_fields(row, new_payload)
-    for k, v in new_payload.items():
+    # apply updates
+    for k, v in updated_job.dict(exclude_unset=True).items():
         setattr(row, k, v)
 
+    # recompute duration for consistency
+    row.estimated_duration = compute_estimated(updated_job)
     db.commit()
     db.refresh(row)
 
-    if changes:
-        hist = database.JobHistoryDB(
+    # log field-by-field diffs
+    for k in watched:
+        old = before.get(k)
+        new = getattr(row, k)
+        # normalize to string for comparison, but don't spam if identical
+        if (old is None and new is None) or str(old) == str(new):
+            continue
+
+        action = "StatusChanged" if k == "status" else "Updated"
+        log_history(
+            db,
             job_id=row.id,
-            event="updated",
-            changes=changes,
+            action=action,
+            field_changed=k,
+            old_value=old,
+            new_value=new,
+            created_by=row.user_name or "system",
         )
-        db.add(hist)
-        db.commit()
 
     return serialize(row)
 
@@ -308,12 +348,12 @@ def get_summary(
         for r in results
     ]
 
-@app.get("/jobs/{job_id}/history", response_model=List[JobHistory])
+@app.get("/jobs/{job_id}/history", response_model=list[models.JobHistoryOut])
 def get_job_history(job_id: int, db: Session = Depends(get_db)):
-    rows = (
+    items = (
         db.query(database.JobHistoryDB)
         .filter(database.JobHistoryDB.job_id == job_id)
-        .order_by(database.JobHistoryDB.changed_at.asc(), database.JobHistoryDB.id.asc())
+        .order_by(database.JobHistoryDB.created_at.asc())
         .all()
     )
-    return [serialize_history(r) for r in rows]
+    return items
