@@ -149,11 +149,12 @@ def serialize_history(h: database.JobHistoryDB):
         "changes": h.changes or [],
     }
 
-def log_history(db: Session, *, job_id: int, event: str, changes: list[dict] | None = None):
+def log_history(db: Session, *, job_id: int, event: str, changes: list | None = None, created_by: str | None = None):
     rec = database.JobHistoryDB(
         job_id=job_id,
-        event=event,               # "created" or "updated"
-        changes=changes or [],     # list of {field, old, new}
+        event=event,
+        changes=changes or [],
+        created_by=created_by,
     )
     db.add(rec)
     db.commit()
@@ -215,10 +216,12 @@ def create_job(job: models.WorkloadItem, db: Session = Depends(get_db)):
     # ✅ History: one record, event "created", no diffs
     log_history(
         db,
-        job_id=db_item.id,
-        event="created",         # <-- lowercase to match UI
-        changes=[],              # UI will show "Initial creation"
+        job_id=db_item.id,          # <- keyword
+        event="created",
+        changes=None,               # or build an initial snapshot if you want
+        created_by=job.user_name or "system",
     )
+    
 
     return serialize(db_item)
 
@@ -254,7 +257,13 @@ def update_job(job_id: int, updated_job: models.WorkloadItem, db: Session = Depe
 
     # one history record with ALL diffs
     if changes:
-        log_history(db, row.id, event="updated", changes=changes)
+        log_history(
+            db,
+            job_id=row.id,          # <- keyword
+            event="updated",
+            changes=changes,
+            created_by=updated_job.user_name or "system",
+        )
     else:
         # optional: still record a no-op update
         log_history(db, row.id, event="updated", changes=[])
