@@ -149,22 +149,19 @@ def serialize_history(h: database.JobHistoryDB):
         "changes": h.changes or None,
     }
 
-def log_history(
-    db: Session,
-    job_id: int,
-    event: str,
-    field_changed: Optional[str] = None,
-    old_value: Optional[str] = None,
-    new_value: Optional[str] = None,
-    created_by: Optional[str] = None,
-):
+# main.py
+
+def log_history(db: Session, job_id: int, event: str, changes: list | None = None):
+    """
+    Write one history record per event.
+    `changes` is a list of {field, old, new} dicts (or [] for created/no-op).
+    """
     rec = database.JobHistoryDB(
         job_id=job_id,
         event=event,
-        field_changed=field_changed,
-        old_value=str(old_value) if old_value is not None else None,
-        new_value=str(new_value) if new_value is not None else None,
-        created_by=created_by,
+        # 👇 use the actual JSON column name in your model
+        changes=changes or []     # if your model uses changes_json, rename here
+        # created_by=created_by,  # only include if you really have this column
     )
     db.add(rec)
     db.commit()
@@ -212,26 +209,24 @@ def create_job(job: models.WorkloadItem, db: Session = Depends(get_db)):
     allowed_types = {"Dev", "Non Dev", "DX"}
     if job.job_type not in allowed_types:
         raise HTTPException(status_code=400, detail=f"job_type must be one of {allowed_types}")
+
     validate_dates(job.start_date, job.due_date)
+
     job_data = job.dict()
     job_data["estimated_duration"] = compute_estimated(job)
+
     db_item = database.WorkloadItemDB(**job_data)
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
 
-   # history: Created
+    # ✅ History: one record, event "created", no diffs
     log_history(
         db,
         job_id=db_item.id,
-        event="Created",
-        field_changed=None,
-        old_value=None,
-        new_value=job.description or "",
-        created_by=job.user_name or "system",
+        event="created",         # <-- lowercase to match UI
+        changes=[],              # UI will show "Initial creation"
     )
-    db.add(hist)
-    db.commit()
 
     return serialize(db_item)
 
@@ -243,40 +238,34 @@ def update_job(job_id: int, updated_job: models.WorkloadItem, db: Session = Depe
 
     validate_dates(updated_job.start_date, updated_job.due_date)
 
-    # capture before-values for important fields
-    watched = [
-        "user_name", "job_type", "task_name", "description",
-        "quantity", "unit", "start_date", "due_date", "status",
+    # compute changes BEFORE mutating row
+    fields_to_track = [
+        "user_name","job_type","task_name","description","quantity",
+        "unit","start_date","due_date","status"
     ]
-    before = {k: getattr(row, k) for k in watched}
+    changes = []
+    for f in fields_to_track:
+        old = getattr(row, f)
+        new = getattr(updated_job, f)
+        if old != new:
+            changes.append({"field": f, "old": old, "new": new})
 
-    # apply updates
+    # overwrite fields
     for k, v in updated_job.dict(exclude_unset=True).items():
         setattr(row, k, v)
 
-    # recompute duration for consistency
+    # recompute duration
     row.estimated_duration = compute_estimated(updated_job)
+
     db.commit()
     db.refresh(row)
 
-    # log field-by-field diffs
-    for k in watched:
-        old = before.get(k)
-        new = getattr(row, k)
-        # normalize to string for comparison, but don't spam if identical
-        if (old is None and new is None) or str(old) == str(new):
-            continue
-
-        event = "StatusChanged" if k == "status" else "Updated"
-        log_history(
-            db,
-            job_id=row.id,
-            event=event,
-            field_changed=k,
-            old_value=old,
-            new_value=new,
-            created_by=row.user_name or "system",
-        )
+    # one history record with ALL diffs
+    if changes:
+        log_history(db, row.id, event="updated", changes=changes)
+    else:
+        # optional: still record a no-op update
+        log_history(db, row.id, event="updated", changes=[])
 
     return serialize(row)
 

@@ -79,21 +79,14 @@ class WorkloadItemDB(Base):
     updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     # >>> define the collection on the parent side
-    history = relationship(
-        "JobHistoryDB",
-        back_populates="job",
-        cascade="all, delete-orphan",
-        order_by="JobHistoryDB.changed_at",
-    )
+    history = relationship("JobHistoryDB", back_populates="job", cascade="all, delete-orphan")
 
 class JobHistoryDB(Base):
     __tablename__ = "job_history"
-
     id = Column(Integer, primary_key=True)
-    job_id = Column(Integer, ForeignKey("workload_items.id", ondelete="CASCADE"), index=True, nullable=False)
-    event = Column(String(20), nullable=False)  # 'created' | 'updated'
-    changed_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
-    changes = Column(JSON, nullable=True)  # array of {field, old, new} or free JSON
+    job_id = Column(Integer, ForeignKey("workload_items.id"), nullable=False)
+    event = Column(String, nullable=False)  # "created" / "updated"
+    changes = Column(JSON, nullable=False, server_default="[]")  # <-- or changes_json
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
-    # >>> link back to the parent; DO NOT use backref here
     job = relationship("WorkloadItemDB", back_populates="history")
