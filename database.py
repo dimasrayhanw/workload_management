@@ -11,6 +11,7 @@ from sqlalchemy import (
     Date,
     Text,
     DateTime,
+    TIMESTAMP,
     JSON,
     ForeignKey,
     func                  # <-- add this
