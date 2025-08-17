@@ -16,57 +16,55 @@ const TASKS_BY_TYPE: Record<JobType, string[]> = {
   DX: ["Initial Setup","Phase 1","Phase 2","Phase 3","Beta Test","Launching","Others (1 hour)"],
 };
 
-/** <<< Edit these values to your real lead times (in hours) >>> */
-const TASK_LEADTIMES: Record<string, number> = {
-  // Dev
-  "BOM - Part Compose": 2,
-  "BOM - Compare": 2,
-  "BOM - HW Option": 1.5,
-  "BOM - Rule Validation": 1,
-  "BOM - Tool Option": 1.5,
-  "BOM - Automation": 2,
-  "BOM Check": 2,
-  "Sending Sample": 3,
-  "Sample Sending": 3,         // alias
-  "Assembly": 4,
-  "Power Consumption": 6,
-  "EMI": 6,
-  "Audio": 4,
-  "D_VA Project Management": 2,
-  "High Grade Project Management": 3,
-  "Material Forecast/Request": 1.5,
-  "CST": 3,
-  "ESD/EOS": 2,
-  "Backend": 8,
-  "HDMI": 8,
-  "USB": 8,
-  "Sub Assy": 5,
-  "DCDC": 6,
-
-  // Non Dev
-  "Innovation": 2,
-  "SHEE 5S": 1,
-  "Education": 2,
-  "Budget/Accounting": 2,
-  "Investment": 2,
-  "VI": 1.5,
-  "CA": 1.5,
-  "IT": 2,
-  "Reinvent": 2,
-  "GA": 1.5,
-  "Asset": 1.5,
-  "Warehouse": 2,
-
-  // DX
-  "Initial Setup": 4,
-  "Phase 1": 8,
-  "Phase 2": 8,
-  "Phase 3": 8,
-  "Beta Test": 6,
-  "Launching": 6,
-
-  // Common catch-all
-  "Others (1 hour)": 1,
+/** ---- FRONTEND RULES MIRROR BACKEND ---- */
+const DEV_RULES_FE: Record<string, number> = {
+  "BOM - Part Compose": 2.0,
+  "BOM - Compare": 1.0,
+  "BOM - HW Option": 4.0,
+  "BOM - Rule Validation": 3.0,
+  "BOM - Tool Option": 2.0,
+  "BOM - Automation": 4.0,
+  "BOM Check": 3.0,
+  "Material Forecast/Request": 0.2,
+  "Sending Sample": 3.0,
+  "Assembly": 0.3,
+  "Power Consumption": 4.0,
+  "EMI": 5.0,
+  "Audio": 5.0,
+  "D_VA Project Management": 2.0,
+  "High Grade Project Management": 4.0,
+  "CST": 5.0,
+  "ESD/EOS": 3.0,
+  "Backend": 5.0,
+  "HDMI": 4.0,
+  "USB": 4.0,
+  "Sub Assy": 4.0,
+  "DCDC": 4.0,
+  "Others (1 hour)": 1.0,
+};
+const NON_DEV_RULES_FE: Record<string, number> = {
+  "Innovation": 2.0,
+  "SHEE 5S": 1.0,
+  "Education": 3.0,
+  "Budget/Accounting": 2.0,
+  "Investment": 3.0,
+  "VI": 3.0,
+  "CA": 2.0,
+  "IT": 1.0,
+  "Reinvent": 2.0,
+  "GA": 0.5,
+  "Asset": 5.0,
+  "Warehouse": 4.0,
+  "Others (1 hour)": 1.0,
+};
+const DX_RULES_FE: Record<string, number> = {
+  "Initial Setup": 2.0,
+  "Phase 1": 4.0,
+  "Phase 2": 4.0,
+  "Phase 3": 4.0,
+  "Beta Test": 2.0,
+  "Launching": 0.5,
+  "Others (1 hour)": 1.0,
 };
 
 const UNIT_SUGGESTIONS: Record<string,string> = {
