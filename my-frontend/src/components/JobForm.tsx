@@ -6,9 +6,9 @@ type JobType = "Dev" | "Non Dev" | "DX";
 
 const TASKS_BY_TYPE: Record<JobType, string[]> = {
   Dev: [
-    "BOM - Part Compose","BOM - Compare","BOM - HW Option","BOM - Rule Validation","BOM - Tool Option","BOM - Automation","BOM Check","Sending Sample","Assembly",
-    "D_VA Project Management","Material Forecast/Request","High Grade Project Management","CST","ESD/EOS","Power Consumption","EMI","Audio",
-    "Backend","HDMI","USB","Sub Assy","DCDC","Others (1 hour)"
+    "BOM - Part Compose","BOM - Compare","BOM - HW Option","BOM - Rule Validation","BOM - Tool Option","BOM - Automation","BOM Check",
+    "Sending Sample","Assembly","Power Consumption","EMI","Audio","D_VA Project Management","Material Forecast/Request","High Grade Project Management",
+    "CST","ESD/EOS","Backend","HDMI","USB","Sub Assy","DCDC","Others (1 hour)"
   ],
   "Non Dev": [
     "Innovation","SHEE 5S","Education","Budget/Accounting","Investment","VI","CA","IT","Reinvent","GA","Asset","Warehouse","Others (1 hour)"
@@ -67,6 +67,15 @@ const DX_RULES_FE: Record<string, number> = {
   "Others (1 hour)": 1.0,
 };
 
+/** Optional alias mapping so “Sample Sending” also works */
+const TASK_ALIASES: Record<string, string> = {
+  "sample sending": "Sending Sample",
+};
+
+const normalizeTask = (name: string) =>
+  TASK_ALIASES[name.trim().toLowerCase()] ?? name;
+
+/** Unit suggestions (unchanged) */
 const UNIT_SUGGESTIONS: Record<string,string> = {
   "Dev|BOM - Part Compose":"model","Dev|BOM - Compare":"model","Dev|BOM - HW Option":"ea","Dev|BOM - Rule Validation":"task","Dev|BOM - Tool Option":"model","Dev|BOM - Automation":"model",
   "Dev|BOM Check":"model","Dev|Sending Sample":"set","Dev|Assembly":"set","Dev|Power Consumption":"model","Dev|EMI":"set","Dev|Audio":"set","Dev|D_VA Project Management":"model",
@@ -87,6 +96,7 @@ function suggestUnit(job_type: JobType | "", task_name: string) {
   return "";
 }
 
+/** Local form state (same as before) */
 type FormState = Omit<Job,"job_type"|"estimated_duration"> & {
   job_type: JobType | "";
   estimated_duration: number;
@@ -112,14 +122,18 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
     status: "Open",
   });
 
-  // Helper: get suggested hours for a task (base hours * quantity)
-  const calcEstimated = (task: string, qty: number) => {
-    const base = TASK_LEADTIMES[task] ?? 0;
-    const q = Number.isFinite(qty) && qty > 0 ? qty : 1;
+  /** Match backend compute_estimated: base depends on job_type, then * quantity */
+  const calcEstimated = (jobType: JobType | "", task: string, qty: number) => {
+    const t = normalizeTask(task);
+    const q = Math.max(1, Number(qty || 1));
+    let base = 0;
+    if (jobType === "Dev") base = DEV_RULES_FE[t] ?? 0;
+    else if (jobType === "Non Dev") base = NON_DEV_RULES_FE[t] ?? 0;
+    else if (jobType === "DX") base = DX_RULES_FE[t] ?? 0;
     return +(base * q).toFixed(1);
   };
 
-  // Prefill when editing
+  // Prefill when editing (unchanged)
   useEffect(() => {
     if (editJob) {
       setFormData({
@@ -148,16 +162,14 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
     }
   }, [editJob]);
 
-  // Recompute estimate when task or quantity changes
+  // Recompute estimate when job_type, task, or quantity changes
   useEffect(() => {
-    if (formData.task_name) {
-      setFormData(prev => ({
-        ...prev,
-        estimated_duration: calcEstimated(prev.task_name, prev.quantity ?? 1),
-      }));
-    }
+    setFormData(prev => ({
+      ...prev,
+      estimated_duration: calcEstimated(prev.job_type, prev.task_name, prev.quantity),
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.task_name, formData.quantity]);
+  }, [formData.job_type, formData.task_name, formData.quantity]);
 
   const availableTasks = useMemo(() => {
     if (!formData.job_type) return [];
@@ -182,22 +194,14 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
       if (name === "job_type") {
         next.task_name = "";
         next.unit = suggestUnit(value as JobType | "", "");
-        // clear estimate until a task is picked
         next.estimated_duration = 0;
       }
-
       if (name === "task_name") {
-        const suggestedUnit = suggestUnit(prev.job_type, value);
+        const suggested = suggestUnit(prev.job_type, value);
         if (!prev.unit || prev.unit === "task" || prev.unit === "set") {
-          next.unit = suggestedUnit;
+          next.unit = suggested;
         }
-        next.estimated_duration = calcEstimated(value, prev.quantity ?? 1);
       }
-
-      if (name === "quantity") {
-        next.estimated_duration = calcEstimated(prev.task_name, Number(value) || 1);
-      }
-
       return next;
     });
   };
@@ -219,7 +223,7 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
       user_name: formData.user_name.trim(),
       job_type: formData.job_type as "Dev" | "Non Dev" | "DX",
       quantity: Number(formData.quantity ?? 1),
-      // estimated_duration is sent too; backend may recompute
+      // estimated_duration will be recomputed by backend too
     };
 
     try {
