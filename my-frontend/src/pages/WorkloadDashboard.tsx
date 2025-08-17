@@ -48,21 +48,28 @@ const WorkloadDashboard: React.FC = () => {
     fetchJobs();
   }, [fetchJobs]);
 
-  // Charts data
+  // Charts data — exclude "Done" jobs from visualizations
+  const activeJobs = React.useMemo(
+    () => jobs.filter(j => (j.status || "Open").toLowerCase() !== "done"),
+    [jobs]
+  );
+
   const byUser = React.useMemo(() => {
     const map: Record<string, number> = {};
-    for (const j of jobs) {
+    for (const j of activeJobs) {
       const key = (j.user_name || "unknown").toLowerCase();
       map[key] = (map[key] || 0) + (j.estimated_duration || 0);
     }
     return Object.entries(map).map(([user, hours]) => ({ user, hours: +hours.toFixed(1) }));
-  }, [jobs]);
+  }, [activeJobs]);
 
   const byType = React.useMemo(() => {
     const map: Record<string, number> = {};
-    for (const j of jobs) map[j.job_type] = (map[j.job_type] || 0) + (j.estimated_duration || 0);
+    for (const j of activeJobs) {
+      map[j.job_type] = (map[j.job_type] || 0) + (j.estimated_duration || 0);
+    }
     return Object.entries(map).map(([name, value]) => ({ name, value: +value.toFixed(1) }));
-  }, [jobs]);
+  }, [activeJobs]);
 
   return (
     <div className="container">
