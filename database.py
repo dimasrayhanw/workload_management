@@ -2,6 +2,7 @@
 import os
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from sqlalchemy.dialects.postgresql import JSON  # if you're storing changes as JSON
+from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy import (
     create_engine,
     Column,
@@ -90,8 +91,9 @@ class JobHistoryDB(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     job_id = Column(Integer, ForeignKey("workload_items.id", ondelete="CASCADE"), nullable=False, index=True)
-    event = Column(String(20), nullable=False)        # "created" | "updated"
-    changes = Column(JSON, nullable=True)             # list of {field, old, new}
+    event = Column(String, nullable=False)        # 'created' | 'updated'
+    changes = Column(JSON, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    created_by = Column(String, nullable=True)    # <-- ADD THIS
 
-    job = relationship("WorkloadItemDB", back_populates="history", passive_deletes=True)
+    job = relationship("WorkloadItemDB", back_populates="history")
