@@ -236,6 +236,12 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
         const text = await res.text();
         throw new Error(`Save failed: ${res.status} ${text}`);
       }
+
+      // ✅ Dispatch the event here so JobList can refresh history
+      const savedJob = await res.json();
+      window.dispatchEvent(new CustomEvent("job:updated", { detail: { id: savedJob.id } }));
+
+      // Reset form after dispatch
       setFormData({
         user_name: "",
         job_type: "",

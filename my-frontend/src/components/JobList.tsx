@@ -1,8 +1,8 @@
 // src/components/JobList.tsx
-import React, { useMemo, useState } from "react";
+
 import type { Job } from "../types";
 import { api } from "../api";
-
+import React, { useMemo, useState, useEffect } from "react";
 
 type Props = {
   jobs: Job[];
@@ -66,6 +66,39 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
   const [historyByJob, setHistoryByJob] = useState<Record<number, any[]>>({});
   const [loadingHistoryId, setLoadingHistoryId] = useState<number | null>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
+
+  // 👇 Add this useEffect here
+  useEffect(() => {
+    const onJobUpdated = (e: Event) => {
+      const id = (e as CustomEvent).detail?.id as number | undefined;
+      if (!id) return;
+
+      // 1) clear cache for this job
+      setHistoryByJob(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+
+      // 2) if row is expanded, refetch immediately
+      if (expandedId === id) {
+        (async () => {
+          try {
+            setLoadingHistoryId(id);
+            const data = await api.getJobHistory(id);
+            setHistoryByJob(prev => ({ ...prev, [id]: data }));
+          } catch (err: any) {
+            setHistoryError(err?.message || "Failed to load history");
+          } finally {
+            setLoadingHistoryId(null);
+          }
+        })();
+      }
+    };
+
+    window.addEventListener("job:updated", onJobUpdated as EventListener);
+    return () => window.removeEventListener("job:updated", onJobUpdated as EventListener);
+  }, [expandedId]); // re-run if expanded row changes
 
   const toggleExpand = async (jobId?: number) => {
     if (!jobId) return;
