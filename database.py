@@ -2,7 +2,15 @@
 import os
 from sqlalchemy import Column, Integer, String, Float, Date, DateTime, JSON, ForeignKey, func
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
-from sqlalchemy import create_engine
+from sqlalchemy import (
+    create_engine,
+    Column,
+    Integer,
+    String,
+    Float,
+    Date,
+    Text,           # <-- add this
+)
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
 Base = declarative_base()
