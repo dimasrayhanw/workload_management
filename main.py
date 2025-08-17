@@ -152,7 +152,7 @@ def serialize_history(h: database.JobHistoryDB):
 def log_history(
     db: Session,
     job_id: int,
-    action: str,
+    event: str,
     field_changed: Optional[str] = None,
     old_value: Optional[str] = None,
     new_value: Optional[str] = None,
@@ -160,7 +160,7 @@ def log_history(
 ):
     rec = database.JobHistoryDB(
         job_id=job_id,
-        action=action,
+        event=event,
         field_changed=field_changed,
         old_value=str(old_value) if old_value is not None else None,
         new_value=str(new_value) if new_value is not None else None,
@@ -168,6 +168,7 @@ def log_history(
     )
     db.add(rec)
     db.commit()
+
 # main.py
 
 @app.exception_handler(SQLAlchemyError)
@@ -223,7 +224,7 @@ def create_job(job: models.WorkloadItem, db: Session = Depends(get_db)):
     log_history(
         db,
         job_id=db_item.id,
-        action="Created",
+        event="Created",
         field_changed=None,
         old_value=None,
         new_value=job.description or "",
@@ -266,11 +267,11 @@ def update_job(job_id: int, updated_job: models.WorkloadItem, db: Session = Depe
         if (old is None and new is None) or str(old) == str(new):
             continue
 
-        action = "StatusChanged" if k == "status" else "Updated"
+        event = "StatusChanged" if k == "status" else "Updated"
         log_history(
             db,
             job_id=row.id,
-            action=action,
+            event=event,
             field_changed=k,
             old_value=old,
             new_value=new,

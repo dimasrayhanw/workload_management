@@ -46,7 +46,7 @@ class JobHistory(BaseModel):
 class JobHistoryOut(BaseModel):
     id: int
     job_id: int
-    action: str
+    event: str
     field_changed: Optional[str] = None
     old_value: Optional[str] = None
     new_value: Optional[str] = None
