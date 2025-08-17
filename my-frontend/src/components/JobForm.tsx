@@ -16,6 +16,59 @@ const TASKS_BY_TYPE: Record<JobType, string[]> = {
   DX: ["Initial Setup","Phase 1","Phase 2","Phase 3","Beta Test","Launching","Others (1 hour)"],
 };
 
+/** <<< Edit these values to your real lead times (in hours) >>> */
+const TASK_LEADTIMES: Record<string, number> = {
+  // Dev
+  "BOM - Part Compose": 2,
+  "BOM - Compare": 2,
+  "BOM - HW Option": 1.5,
+  "BOM - Rule Validation": 1,
+  "BOM - Tool Option": 1.5,
+  "BOM - Automation": 2,
+  "BOM Check": 2,
+  "Sending Sample": 3,
+  "Sample Sending": 3,         // alias
+  "Assembly": 4,
+  "Power Consumption": 6,
+  "EMI": 6,
+  "Audio": 4,
+  "D_VA Project Management": 2,
+  "High Grade Project Management": 3,
+  "Material Forecast/Request": 1.5,
+  "CST": 3,
+  "ESD/EOS": 2,
+  "Backend": 8,
+  "HDMI": 8,
+  "USB": 8,
+  "Sub Assy": 5,
+  "DCDC": 6,
+
+  // Non Dev
+  "Innovation": 2,
+  "SHEE 5S": 1,
+  "Education": 2,
+  "Budget/Accounting": 2,
+  "Investment": 2,
+  "VI": 1.5,
+  "CA": 1.5,
+  "IT": 2,
+  "Reinvent": 2,
+  "GA": 1.5,
+  "Asset": 1.5,
+  "Warehouse": 2,
+
+  // DX
+  "Initial Setup": 4,
+  "Phase 1": 8,
+  "Phase 2": 8,
+  "Phase 3": 8,
+  "Beta Test": 6,
+  "Launching": 6,
+
+  // Common catch-all
+  "Others (1 hour)": 1,
+};
+
 const UNIT_SUGGESTIONS: Record<string,string> = {
   "Dev|BOM - Part Compose":"model","Dev|BOM - Compare":"model","Dev|BOM - HW Option":"ea","Dev|BOM - Rule Validation":"task","Dev|BOM - Tool Option":"model","Dev|BOM - Automation":"model",
   "Dev|BOM Check":"model","Dev|Sending Sample":"set","Dev|Assembly":"set","Dev|Power Consumption":"model","Dev|EMI":"set","Dev|Audio":"set","Dev|D_VA Project Management":"model",
@@ -61,6 +114,14 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
     status: "Open",
   });
 
+  // Helper: get suggested hours for a task (base hours * quantity)
+  const calcEstimated = (task: string, qty: number) => {
+    const base = TASK_LEADTIMES[task] ?? 0;
+    const q = Number.isFinite(qty) && qty > 0 ? qty : 1;
+    return +(base * q).toFixed(1);
+  };
+
+  // Prefill when editing
   useEffect(() => {
     if (editJob) {
       setFormData({
@@ -89,6 +150,17 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
     }
   }, [editJob]);
 
+  // Recompute estimate when task or quantity changes
+  useEffect(() => {
+    if (formData.task_name) {
+      setFormData(prev => ({
+        ...prev,
+        estimated_duration: calcEstimated(prev.task_name, prev.quantity ?? 1),
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.task_name, formData.quantity]);
+
   const availableTasks = useMemo(() => {
     if (!formData.job_type) return [];
     const arr = TASKS_BY_TYPE[formData.job_type] || [];
@@ -112,13 +184,22 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
       if (name === "job_type") {
         next.task_name = "";
         next.unit = suggestUnit(value as JobType | "", "");
+        // clear estimate until a task is picked
+        next.estimated_duration = 0;
       }
+
       if (name === "task_name") {
-        const suggested = suggestUnit(prev.job_type, value);
+        const suggestedUnit = suggestUnit(prev.job_type, value);
         if (!prev.unit || prev.unit === "task" || prev.unit === "set") {
-          next.unit = suggested;
+          next.unit = suggestedUnit;
         }
+        next.estimated_duration = calcEstimated(value, prev.quantity ?? 1);
       }
+
+      if (name === "quantity") {
+        next.estimated_duration = calcEstimated(prev.task_name, Number(value) || 1);
+      }
+
       return next;
     });
   };
@@ -140,6 +221,7 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
       user_name: formData.user_name.trim(),
       job_type: formData.job_type as "Dev" | "Non Dev" | "DX",
       quantity: Number(formData.quantity ?? 1),
+      // estimated_duration is sent too; backend may recompute
     };
 
     try {
@@ -315,7 +397,7 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
             value={formData.estimated_duration}
             onChange={handleChange}
             disabled
-            title="Calculated automatically by server"
+            title="Calculated automatically"
             placeholder="Estimated Duration (hrs)"
           />
         </div>
