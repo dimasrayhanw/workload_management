@@ -1,7 +1,7 @@
 # database.py
 import os
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, JSON, ForeignKey, func
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
+from sqlalchemy.dialects.postgresql import JSON  # if you're storing changes as JSON
 from sqlalchemy import (
     create_engine,
     Column,
@@ -11,7 +11,9 @@ from sqlalchemy import (
     Date,
     Text,
     DateTime,
-    ForeignKey         # <-- add this
+    JSON,
+    ForeignKey,
+    func                  # <-- add this
 )
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from datetime import datetime
@@ -71,25 +73,26 @@ class WorkloadItemDB(Base):
     due_date = Column(String, nullable=True)    # ISO date string
     status = Column(String, nullable=True, index=True, default="Open")
 
-    # NEW: timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    # timestamps you added
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
-    # relationship for convenience (not required)
-    history = relationship("JobHistoryDB", back_populates="job", cascade="all, delete-orphan")
+    # >>> define the collection on the parent side
+    history = relationship(
+        "JobHistoryDB",
+        back_populates="job",
+        cascade="all, delete-orphan",
+        order_by="JobHistoryDB.changed_at",
+    )
 
 class JobHistoryDB(Base):
     __tablename__ = "job_history"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     job_id = Column(Integer, ForeignKey("workload_items.id", ondelete="CASCADE"), index=True, nullable=False)
+    event = Column(String(20), nullable=False)  # 'created' | 'updated'
+    changed_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    changes = Column(JSON, nullable=True)  # array of {field, old, new} or free JSON
 
-    action = Column(Text, nullable=False)          # "Created", "Updated", "StatusChanged", etc.
-    field_changed = Column(Text, nullable=True)    # e.g. "description", "status"
-    old_value = Column(Text, nullable=True)
-    new_value = Column(Text, nullable=True)
-
-    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-    created_by = Column(Text, nullable=True)
-
-    job = relationship("WorkloadItemDB", backref="history", passive_deletes=True)
+    # >>> link back to the parent; DO NOT use backref here
+    job = relationship("WorkloadItemDB", back_populates="history")
