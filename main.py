@@ -4,10 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import date
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 from pydantic import ValidationError
+from models import JobHistory, HistoryChange
+from sqlalchemy.orm.attributes import flag_modified
 import os
 import database
 import models
@@ -123,6 +125,29 @@ def serialize(r: database.WorkloadItemDB):
         "status": r.status or "Open",
     }
 
+def diff_fields(old_row, new_payload: dict) -> List[dict]:
+    """Return list of per-field changes old->new (skip identical/None-only noise)."""
+    tracked = [
+        "user_name","job_type","task_name","description",
+        "quantity","estimated_duration","unit","start_date","due_date","status"
+    ]
+    changes = []
+    for f in tracked:
+        old = getattr(old_row, f)
+        new = new_payload.get(f, old)
+        # normalize to simple scalars/strings for comparison
+        if old != new:
+            changes.append({"field": f, "old": old, "new": new})
+    return changes
+
+def serialize_history(h: database.JobHistoryDB):
+    return {
+        "id": h.id,
+        "job_id": h.job_id,
+        "event": h.event,
+        "changed_at": h.changed_at.isoformat() if h.changed_at else None,
+        "changes": h.changes or None,
+    }
 # main.py
 
 @app.exception_handler(SQLAlchemyError)
@@ -173,6 +198,16 @@ def create_job(job: models.WorkloadItem, db: Session = Depends(get_db)):
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
+
+    # history: created
+    hist = database.JobHistoryDB(
+        job_id=db_item.id,
+        event="created",
+        changes=None
+    )
+    db.add(hist)
+    db.commit()
+
     return serialize(db_item)
 
 @app.put("/jobs/{job_id}")
@@ -181,13 +216,27 @@ def update_job(job_id: int, updated_job: models.WorkloadItem, db: Session = Depe
     if not row:
         raise HTTPException(status_code=404, detail="Job not found")
     validate_dates(updated_job.start_date, updated_job.due_date)
-    # overwrite fields
-    for k, v in updated_job.dict(exclude_unset=True).items():
+
+    new_payload = updated_job.dict(exclude_unset=True)
+    # recompute estimated for consistency
+    new_payload["estimated_duration"] = compute_estimated(updated_job)
+
+    changes = diff_fields(row, new_payload)
+    for k, v in new_payload.items():
         setattr(row, k, v)
-    # recompute duration for consistency
-    row.estimated_duration = compute_estimated(updated_job)
+
     db.commit()
     db.refresh(row)
+
+    if changes:
+        hist = database.JobHistoryDB(
+            job_id=row.id,
+            event="updated",
+            changes=changes,
+        )
+        db.add(hist)
+        db.commit()
+
     return serialize(row)
 
 @app.get("/jobs/{job_id}")
@@ -258,3 +307,13 @@ def get_summary(
         }
         for r in results
     ]
+
+@app.get("/jobs/{job_id}/history", response_model=List[JobHistory])
+def get_job_history(job_id: int, db: Session = Depends(get_db)):
+    rows = (
+        db.query(database.JobHistoryDB)
+        .filter(database.JobHistoryDB.job_id == job_id)
+        .order_by(database.JobHistoryDB.changed_at.asc(), database.JobHistoryDB.id.asc())
+        .all()
+    )
+    return [serialize_history(r) for r in rows]

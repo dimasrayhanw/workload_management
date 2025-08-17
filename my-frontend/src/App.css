@@ -387,6 +387,48 @@ tbody tr:nth-child(even) {
   margin-bottom: 6px;
 }
 
+/* history panel under a row */
+.detail-row td { padding: 0 !important; }
+.history-panel {
+  background: #0f173c;
+  border-top: 1px solid var(--border);
+  padding: 12px 12px 14px;
+}
+.history-loading { color: var(--muted); }
+.history-error { color: #ff9aa2; }
+
+.history-content { display: grid; gap: 10px; }
+.history-head { color: #b7c2e6; }
+
+.history-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.history-item {
+  background: #0c1331;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.history-when { color: var(--muted); font-size: 12px; }
+.history-event { margin: 4px 0 8px; }
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.history-table th, .history-table td {
+  border: 1px solid #121a3b;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+.history-table thead th {
+  background: #0e1639;
+  color: #bcc6e6;
+}
+
 /* Ensure overdue rows are solid red without zebra bleeding */
 .table-wrap tbody tr.row-overdue,
 .table-wrap tbody tr.row-overdue td {

@@ -33,4 +33,16 @@ export const api = {
     if (!res.ok) throw new Error(await res.text());
     return true;
   },
+
+  async getJobHistory(jobId: number) {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE}/jobs/${jobId}/history`);
+    if (!res.ok) throw new Error(`History fetch failed: ${res.status}`);
+    return res.json() as Promise<Array<{
+      id: number;
+      job_id: number;
+      event: 'created' | 'updated';
+      changed_at: string;
+      changes?: Array<{ field: string; old: any; new: any }>;
+    }>>;
+  },
 };

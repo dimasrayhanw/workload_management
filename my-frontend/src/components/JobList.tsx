@@ -3,6 +3,7 @@ import React, { useMemo, useState } from "react";
 import type { Job } from "../types";
 import { api } from "../api";
 
+
 type Props = {
   jobs: Job[];
   onJobsUpdated: () => void;
@@ -59,6 +60,34 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+  // NEW: row expansion + cached histories
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [historyByJob, setHistoryByJob] = useState<Record<number, any[]>>({});
+  const [loadingHistoryId, setLoadingHistoryId] = useState<number | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  const toggleExpand = async (jobId?: number) => {
+    if (!jobId) return;
+    setHistoryError(null);
+    if (expandedId === jobId) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(jobId);
+    // fetch if not cached
+    if (!historyByJob[jobId]) {
+      try {
+        setLoadingHistoryId(jobId);
+        const data = await api.getJobHistory(jobId);
+        setHistoryByJob(prev => ({ ...prev, [jobId]: data }));
+      } catch (e: any) {
+        setHistoryError(e?.message || "Failed to load history");
+      } finally {
+        setLoadingHistoryId(null);
+      }
+    }
+  };
 
   const toggleSort = (key: SortKey) => {
     setPage(1);
@@ -242,27 +271,122 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
         </thead>
 
         <tbody>
-          {pageRows.map(job => (
-            <tr key={job.id} className={isOverdue(job) ? "row-overdue" : undefined}>
-              <td><input type="checkbox" checked={selectedIds.includes(job.id!)} onChange={() => toggleOne(job.id)} /></td>
-              <td>{job.user_name}</td>
-              <td>{job.job_type}</td>
-              <td>{job.task_name}</td>
-              <td>{job.description || "-"}</td>
-              <td className="cell-right">{job.quantity}</td>
-              <td>{job.unit || "-"}</td>
-              <td className="cell-right nowrap">{fmtHours(job.estimated_duration)}</td>
-              <td>{job.start_date || "-"}</td>
-              <td>{job.due_date || "-"}</td>
-              <td><span className={`status ${job.status || "Open"}`}>{job.status || "Open"}</span></td>
-              <td>
-                <div className="row" style={{ gap: 6 }}>
-                  <button type="button" className="btn small"        onClick={() => onEditJob(job)} title="Edit this job">Edit</button>
-                  <button type="button" className="btn danger small" onClick={() => handleDelete(job.id)} title="Delete this job">Delete</button>
-                </div>
-              </td>
-            </tr>
-          ))}
+          {pageRows.map(job => {
+            const isExpanded = expandedId === job.id;
+            return (
+              <React.Fragment key={job.id}>
+                <tr
+                  className={isOverdue(job) ? "row-overdue" : undefined}
+                  onClick={(e) => {
+                    // avoid stealing clicks from action buttons
+                    const tag = (e.target as HTMLElement).tagName.toLowerCase();
+                    if (["button", "input", "select", "a"].includes(tag)) return;
+                    toggleExpand(job.id);
+                  }}
+                  style={{ cursor: "pointer" }}
+                  title="Click row to view history"
+                >
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(job.id!)}
+                      onChange={() => toggleOne(job.id)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </td>
+                  <td>{job.user_name}</td>
+                  <td>{job.job_type}</td>
+                  <td>{job.task_name}</td>
+                  <td>{job.description || "-"}</td>
+                  <td className="cell-right">{job.quantity}</td>
+                  <td>{job.unit || "-"}</td>
+                  <td className="cell-right nowrap">{fmtHours(job.estimated_duration)}</td>
+                  <td>{job.start_date || "-"}</td>
+                  <td>{job.due_date || "-"}</td>
+                  <td><span className={`status ${job.status || "Open"}`}>{job.status || "Open"}</span></td>
+                  <td>
+                    <div className="row" style={{ gap: 6 }}>
+                      <button
+                        type="button"
+                        className="btn small"
+                        onClick={(e) => { e.stopPropagation(); onEditJob(job); }}
+                        title="Edit this job"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="btn danger small"
+                        onClick={(e) => { e.stopPropagation(); handleDelete(job.id); }}
+                        title="Delete this job"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                {/* INLINE DETAIL ROW */}
+                {isExpanded && (
+                  <tr className="detail-row">
+                    <td colSpan={12} style={{ padding: 0 }}>
+                      <div className="history-panel">
+                        {loadingHistoryId === job.id && <div className="history-loading">Loading history…</div>}
+                        {historyError && <div className="history-error">⚠️ {historyError}</div>}
+                        {!loadingHistoryId && !historyError && (
+                          <div className="history-content">
+                            <div className="history-head">
+                              <strong>Job #{job.id}</strong> — created by <em>{job.user_name}</em>
+                            </div>
+
+                            <div className="history-grid">
+                              {(historyByJob[job.id!] || []).map((h) => (
+                                <div key={h.id} className="history-item">
+                                  <div className="history-when">
+                                    {new Date(h.changed_at).toLocaleString()}
+                                  </div>
+                                  <div className="history-event">
+                                    {h.event === "created" ? (
+                                      <span className="chip badge">Created</span>
+                                    ) : (
+                                      <span className="chip badge">Updated</span>
+                                    )}
+                                  </div>
+
+                                  {Array.isArray(h.changes) && h.changes.length > 0 ? (
+                                    <table className="history-table">
+                                      <thead>
+                                        <tr><th>Field</th><th>From</th><th>To</th></tr>
+                                      </thead>
+                                      <tbody>
+                                        {h.changes.map((c: any, i: number) => (
+                                          <tr key={i}>
+                                            <td className="nowrap">{c.field}</td>
+                                            <td>{c.old === null || c.old === undefined || c.old === "" ? "—" : String(c.old)}</td>
+                                            <td>{c.new === null || c.new === undefined || c.new === "" ? "—" : String(c.new)}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  ) : (
+                                    h.event === "created" ? <div className="muted">Initial creation</div> : null
+                                  )}
+                                </div>
+                              ))}
+
+                              {(historyByJob[job.id!] || []).length === 0 && (
+                                <div className="muted">No history found.</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            );
+          })}
           {pageRows.length === 0 && (
             <tr><td colSpan={12} style={{ textAlign: "center", padding: 16 }}>No jobs</td></tr>
           )}

@@ -1,7 +1,9 @@
 # database.py
 import os
-from sqlalchemy import create_engine, Column, Integer, String, Text, Float
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, JSON, ForeignKey, func
+from sqlalchemy.orm import declarative_base, relationship
+
+Base = declarative_base()
 
 # 1) Read DATABASE_URL (Render env) or fallback to local SQLite
 raw_url = os.getenv("DATABASE_URL", "sqlite:///./workload.db")
@@ -55,3 +57,24 @@ class WorkloadItemDB(Base):
     start_date = Column(String, nullable=True)  # ISO date string
     due_date = Column(String, nullable=True)    # ISO date string
     status = Column(String, nullable=True, index=True, default="Open")
+
+    # NEW: timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # relationship for convenience (not required)
+    history = relationship("JobHistoryDB", back_populates="job", cascade="all, delete-orphan")
+
+class JobHistoryDB(Base):
+    __tablename__ = "job_history"
+    id = Column(Integer, primary_key=True)
+    job_id = Column(Integer, ForeignKey("workload_items.id", ondelete="CASCADE"), index=True, nullable=False)
+
+    # event info
+    event = Column(String, nullable=False)            # 'created' | 'updated'
+    changed_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    # what changed (for 'updated'): {"field":"status","old":"Open","new":"Done"} or list of those
+    changes = Column(JSON, nullable=True)
+
+    job = relationship("WorkloadItemDB", back_populates="history")

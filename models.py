@@ -1,6 +1,6 @@
 # models.py
 from pydantic import BaseModel, field_validator
-from typing import Optional, Literal
+from typing import Any, List, Optional, Dict, Literal
 from datetime import date
 # backend/models.py
 
@@ -27,3 +27,18 @@ class WorkloadItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+class HistoryChange(BaseModel):
+    field: str
+    old: Any = None
+    new: Any = None
+
+class JobHistory(BaseModel):
+    id: int
+    job_id: int
+    event: str
+    changed_at: str
+    changes: Optional[List[HistoryChange]] = None
+
+    class Config:
+        orm_mode = True
