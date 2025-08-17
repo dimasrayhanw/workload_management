@@ -348,12 +348,21 @@ def get_summary(
         for r in results
     ]
 
-@app.get("/jobs/{job_id}/history", response_model=list[models.JobHistoryOut])
+@app.get("/jobs/{job_id}/history")
 def get_job_history(job_id: int, db: Session = Depends(get_db)):
-    items = (
+    rows = (
         db.query(database.JobHistoryDB)
         .filter(database.JobHistoryDB.job_id == job_id)
-        .order_by(database.JobHistoryDB.created_at.asc())
+        .order_by(database.JobHistoryDB.changed_at.asc())   # ← use changed_at
         .all()
     )
-    return items
+    return [
+        {
+            "id": r.id,
+            "job_id": r.job_id,
+            "event": r.event,
+            "changed_at": r.changed_at.isoformat() if r.changed_at else None,
+            "changes": r.changes or [],
+        }
+        for r in rows
+    ]
