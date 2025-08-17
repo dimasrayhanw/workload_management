@@ -145,23 +145,15 @@ def serialize_history(h: database.JobHistoryDB):
         "id": h.id,
         "job_id": h.job_id,
         "event": h.event,
-        "changed_at": h.changed_at.isoformat() if h.changed_at else None,
-        "changes": h.changes or None,
+        "changed_at": h.created_at.isoformat(),  # map created_at -> changed_at for frontend
+        "changes": h.changes or [],
     }
 
-# main.py
-
-def log_history(db: Session, job_id: int, event: str, changes: list | None = None):
-    """
-    Write one history record per event.
-    `changes` is a list of {field, old, new} dicts (or [] for created/no-op).
-    """
+def log_history(db: Session, *, job_id: int, event: str, changes: list[dict] | None = None):
     rec = database.JobHistoryDB(
         job_id=job_id,
-        event=event,
-        # 👇 use the actual JSON column name in your model
-        changes=changes or []     # if your model uses changes_json, rename here
-        # created_by=created_by,  # only include if you really have this column
+        event=event,               # "created" or "updated"
+        changes=changes or [],     # list of {field, old, new}
     )
     db.add(rec)
     db.commit()
@@ -338,21 +330,13 @@ def get_summary(
         for r in results
     ]
 
+
 @app.get("/jobs/{job_id}/history")
 def get_job_history(job_id: int, db: Session = Depends(get_db)):
     rows = (
         db.query(database.JobHistoryDB)
-        .filter(database.JobHistoryDB.job_id == job_id)
-        .order_by(database.JobHistoryDB.changed_at.asc())   # ← use changed_at
-        .all()
+          .filter(database.JobHistoryDB.job_id == job_id)
+          .order_by(database.JobHistoryDB.created_at.asc())  # <-- use created_at here
+          .all()
     )
-    return [
-        {
-            "id": r.id,
-            "job_id": r.job_id,
-            "event": r.event,
-            "changed_at": r.changed_at.isoformat() if r.changed_at else None,
-            "changes": r.changes or [],
-        }
-        for r in rows
-    ]
+    return [serialize_history(r) for r in rows]
