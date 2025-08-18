@@ -40,13 +40,14 @@ def get_db():
 
 # ---- Auto duration rules (hours) ----
 DEV_RULES: Dict[str, float] = { # hour per day
-    "BOM - Part Compose": 2.0,
+    "BOM - General Compose": 2.0,
+    "BOM - Part Number Management": 0.1,
     "BOM - Compare": 1.0,
-    "BOM - HW Option": 4.0,
-    "BOM - Rule Validation": 3.0,
-    "BOM - Tool Option": 2.0,
-    "BOM - Automation": 4.0,
-    "BOM Check": 3.0,
+    "BOM - HW Option Compose": 4.0,
+    "BOM - Rule Validation Management": 0.1,
+    "BOM - Tool Option Compose": 1.0,
+    "BOM - Automation Compose": 3.0,
+    "BOM Check": 2.0,
     "Material Forecast/Request": 0.2,
     "Sending Sample": 3.0,
     "Assembly": 0.3,
@@ -63,6 +64,7 @@ DEV_RULES: Dict[str, float] = { # hour per day
     "Sub Assy": 4.0,
     "DCDC": 4.0,
     "Others (1 hour)": 1.0,
+    "Others (30 minutes)": 0.5,
 }
 NON_DEV_RULES: Dict[str, float] = {# hour per day
     "Innovation": 2.0,
@@ -78,6 +80,7 @@ NON_DEV_RULES: Dict[str, float] = {# hour per day
     "Asset": 5.0,
     "Warehouse": 4.0,
     "Others (1 hour)": 1.0,
+    "Others (30 minutes)": 0.5,
 }
 DX_RULES: Dict[str, float] = {# hour per day
     "Initial Setup": 2.0,
@@ -87,6 +90,7 @@ DX_RULES: Dict[str, float] = {# hour per day
     "Beta Test": 2.0,
     "Launching": 0.5,
     "Others (1 hour)": 1.0,
+    "Others (30 minutes)": 0.5,
 }
 
 def compute_estimated(job: models.WorkloadItem) -> float:

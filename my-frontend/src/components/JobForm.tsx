@@ -6,25 +6,26 @@ type JobType = "Dev" | "Non Dev" | "DX";
 
 const TASKS_BY_TYPE: Record<JobType, string[]> = {
   Dev: [
-    "BOM - Part Compose","BOM - Compare","BOM - HW Option","BOM - Rule Validation","BOM - Tool Option","BOM - Automation","BOM Check",
+    "BOM - General Compose","BOM - Part Number Management","BOM - Compare","BOM - HW Option Compose","BOM - Rule Validation Management","BOM - Tool Option Compose","BOM - Automation Compose","BOM Check",
     "Sending Sample","Assembly","Power Consumption","EMI","Audio","D_VA Project Management","Material Forecast/Request","High Grade Project Management",
-    "CST","ESD/EOS","Backend","HDMI","USB","Sub Assy","DCDC","Others (1 hour)"
+    "CST","ESD/EOS","Backend","HDMI","USB","Sub Assy","DCDC","Others (1 hour)","Others (30 minutes)"
   ],
   "Non Dev": [
-    "Innovation","SHEE 5S","Education","Budget/Accounting","Investment","VI","CA","IT","Reinvent","GA","Asset","Warehouse","Others (1 hour)"
+    "Innovation","SHEE 5S","Education","Budget/Accounting","Investment","VI","CA","IT","Reinvent","GA","Asset","Warehouse","Others (1 hour)","Others (30 minutes)"
   ],
-  DX: ["Initial Setup","Phase 1","Phase 2","Phase 3","Beta Test","Launching","Others (1 hour)"],
+  DX: ["Initial Setup","Phase 1","Phase 2","Phase 3","Beta Test","Launching","Others (1 hour)","Others (30 minutes)"],
 };
 
 /** ---- FRONTEND RULES MIRROR BACKEND ---- */
 const DEV_RULES_FE: Record<string, number> = {
-  "BOM - Part Compose": 2.0,
+  "BOM - General Compose": 2.0,
+  "BOM - Part Number Management": 0.1,
   "BOM - Compare": 1.0,
-  "BOM - HW Option": 4.0,
-  "BOM - Rule Validation": 3.0,
-  "BOM - Tool Option": 2.0,
-  "BOM - Automation": 4.0,
-  "BOM Check": 3.0,
+  "BOM - HW Option Compose": 4.0,
+  "BOM - Rule Validation Management": 0.1,
+  "BOM - Tool Option Compose": 1.0,
+  "BOM - Automation Compose": 3.0,
+  "BOM Check": 2.0,
   "Material Forecast/Request": 0.2,
   "Sending Sample": 3.0,
   "Assembly": 0.3,
@@ -32,15 +33,16 @@ const DEV_RULES_FE: Record<string, number> = {
   "EMI": 5.0,
   "Audio": 5.0,
   "D_VA Project Management": 2.0,
-  "High Grade Project Management": 4.0,
-  "CST": 5.0,
-  "ESD/EOS": 3.0,
-  "Backend": 5.0,
+  "High Grade Project Management": 4.0,  
+  "CST": 5.0,     
+  "ESD/EOS": 3.0,  
+  "Backend": 5.0,  
   "HDMI": 4.0,
   "USB": 4.0,
   "Sub Assy": 4.0,
   "DCDC": 4.0,
   "Others (1 hour)": 1.0,
+  "Others (30 minutes)": 0.5,
 };
 const NON_DEV_RULES_FE: Record<string, number> = {
   "Innovation": 2.0,
@@ -77,14 +79,14 @@ const normalizeTask = (name: string) =>
 
 /** Unit suggestions (unchanged) */
 const UNIT_SUGGESTIONS: Record<string,string> = {
-  "Dev|BOM - Part Compose":"model","Dev|BOM - Compare":"model","Dev|BOM - HW Option":"ea","Dev|BOM - Rule Validation":"task","Dev|BOM - Tool Option":"model","Dev|BOM - Automation":"model",
+  "Dev|BOM - General Compose":"model","Dev|BOM - Part Number Management":"model","Dev|BOM - Compare":"model","Dev|BOM - HW Option Compose":"ea","Dev|BOM - Rule Validation Management":"rule","Dev|BOM - Tool Option Compose":"model","Dev|BOM - Automation Compose":"model",
   "Dev|BOM Check":"model","Dev|Sending Sample":"set","Dev|Assembly":"set","Dev|Power Consumption":"model","Dev|EMI":"set","Dev|Audio":"set","Dev|D_VA Project Management":"model",
   "Dev|High Grade Project Management":"model","Dev|Material Forecast/Request":"model","Dev|CST":"set","Dev|ESD/EOS":"set",
-  "Dev|Backend":"set","Dev|HDMI":"set","Dev|USB":"set","Dev|Sub Assy":"set","Dev|DCDC":"set","Dev|Others (1 hour)":"set",
+  "Dev|Backend":"set","Dev|HDMI":"set","Dev|USB":"set","Dev|Sub Assy":"set","Dev|DCDC":"set","Dev|Others (1 hour)":"task","Dev|Others (30 minutes)":"task",
   "Non Dev|Innovation":"task","Non Dev|SHEE 5S":"task","Non Dev|Education":"task",
   "Non Dev|Budget/Accounting":"task","Non Dev|Investment":"task","Non Dev|VI":"task","Non Dev|CA":"task","Non Dev|IT":"task",
-  "Non Dev|Reinvent":"task","Non Dev|GA":"task","Non Dev|Asset":"task","Non Dev|Warehouse":"task","Non Dev|Others (1 hour)":"task",
-  "DX|Initial Setup":"task","DX|Phase 1":"task","DX|Phase 2":"task","DX|Phase 3":"task","DX|Beta Test":"task","DX|Launching":"task","DX|Others (1 hour)":"task",
+  "Non Dev|Reinvent":"task","Non Dev|GA":"task","Non Dev|Asset":"task","Non Dev|Warehouse":"task","Non Dev|Others (1 hour)":"task","Non Dev|Others (30 minutes)":"task",
+  "DX|Initial Setup":"task","DX|Phase 1":"task","DX|Phase 2":"task","DX|Phase 3":"task","DX|Beta Test":"task","DX|Launching":"task","DX|Others (1 hour)":"task","DX|Others (30 minutes)":"task",
 };
 
 function suggestUnit(job_type: JobType | "", task_name: string) {

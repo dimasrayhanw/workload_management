@@ -75,8 +75,8 @@ const WorkloadDashboard: React.FC = () => {
     <div className="container">
       <div className="header">
         <div>
-          <div className="h1">Workload Dashboard</div>
-          <div className="sub">Track jobs, estimates and status in one place</div>
+          <div className="h1">Workload Dashboard HW OLED LGERC</div>
+          <div className="sub">For the easiest job tracking</div>
         </div>
         <div className="chips">
           <span className="chip badge">Jobs: {jobs.length}</span>
