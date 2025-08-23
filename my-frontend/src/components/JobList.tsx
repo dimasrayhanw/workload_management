@@ -3,6 +3,7 @@
 import type { Job } from "../types";
 import { api } from "../api";
 import React, { useMemo, useState, useEffect } from "react";
+import { USER_NAMES } from "../constants";
 
 type Props = {
   jobs: Job[];
@@ -135,7 +136,7 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
     let r = jobs.slice();
 
     // text/status filters
-    if (fUser)  r = r.filter(j => (j.user_name || "").toLowerCase().includes(fUser.toLowerCase()));
+    if (fUser) r = r.filter(j => (j.user_name || "") === fUser);
     if (fType)  r = r.filter(j => j.job_type === fType);
     if (fTask)  r = r.filter(j => (j.task_name || "").toLowerCase().includes(fTask.toLowerCase()));
     if (fStatus) r = r.filter(j => (j.status || "Open") === fStatus);
@@ -253,13 +254,20 @@ const JobList: React.FC<Props> = ({ jobs, onJobsUpdated, onEditJob }) => {
     <div>
       {/* Filters */}
       <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(5, minmax(0,1fr))", margin: "8px 0" }}>
-        <input placeholder="Filter User" value={fUser} onChange={(e) => setFUser(e.target.value)} />
+        <select value={fUser} onChange={(e) => setFUser(e.target.value)}>
+          <option value="">All Users</option>
+          {USER_NAMES.map((u) => (
+            <option key={u} value={u}>{u}</option>
+          ))}
+        </select>
+
         <select value={fType} onChange={(e) => setFType(e.target.value)}>
           <option value="">All Types</option>
           <option>Dev</option>
           <option>Non Dev</option>
           <option>DX</option>
         </select>
+
         <input placeholder="Filter Task" value={fTask} onChange={(e) => setFTask(e.target.value)} />
         <select value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
           <option value="">All Status</option>

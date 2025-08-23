@@ -1,6 +1,8 @@
 // src/components/JobForm.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import type { Job } from "../types";
+import { USER_NAMES } from "../constants";
+
 
 type JobType = "Dev" | "Non Dev" | "DX";
 
@@ -272,14 +274,18 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
         <div className="form-stack">
           <div className="form-group">
             <span className="form-label">User Name</span>
-            <input
+            <select
               className="input"
               name="user_name"
-              placeholder="User Name"
               value={formData.user_name}
               onChange={handleChange}
               required
-            />
+            >
+              <option value="" disabled hidden>-- Choose a user --</option>
+              {USER_NAMES.map((u) => (
+                <option key={u} value={u}>{u}</option>
+              ))}
+            </select>
           </div>
 
           <div className="form-group">
