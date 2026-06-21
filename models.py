@@ -15,6 +15,7 @@ class WorkloadItem(BaseModel):
     start_date: Optional[str] = None            # YYYY-MM-DD
     due_date: Optional[str] = None
     status: Optional[str] = "Open"
+    complexity: Optional[str] = "Normal"  # Simple / Normal / Complex / Very Complex
 
     @field_validator("start_date", "due_date")
     @classmethod

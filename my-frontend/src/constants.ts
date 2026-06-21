@@ -23,9 +23,21 @@ export function resolveDisplayName(raw: string): string {
   return NAME_LEGACY_MAP[raw.trim().toLowerCase()] ?? raw;
 }
 
+export const COMPLEXITY_MULTIPLIERS: Record<string, number> = {
+  "Simple": 0.5,
+  "Normal": 1.0,
+  "Complex": 1.5,
+  "Very Complex": 2.0,
+};
+
+export const COMPLEXITY_OPTIONS = [
+  { value: "Simple",       label: "Simple (×0.5)",       desc: "Routine, done before" },
+  { value: "Normal",       label: "Normal (×1.0)",       desc: "Standard complexity" },
+  { value: "Complex",      label: "Complex (×1.5)",      desc: "New model / tricky specs" },
+  { value: "Very Complex", label: "Very Complex (×2.0)", desc: "First time / unknown factors" },
+] as const;
+
 export const USER_NAMES = [
-  // Team Leader
-  "Sung-Bo",
   // Part 1
   "Iqbal", "Dary",
   "Fiqri", "Ghiffary", "Alim", "Stefani", "Naufal", "Dyas",

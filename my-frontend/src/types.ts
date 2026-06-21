@@ -11,4 +11,5 @@ export interface Job {
   start_date?: string;        // YYYY-MM-DD
   due_date?: string;          // YYYY-MM-DD
   status?: "Open" | "Done";
+  complexity?: string;
 }

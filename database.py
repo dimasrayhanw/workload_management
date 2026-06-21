@@ -74,6 +74,7 @@ class WorkloadItemDB(Base):
     start_date = Column(String, nullable=True)  # ISO date string
     due_date = Column(String, nullable=True)    # ISO date string
     status = Column(String, nullable=True, index=True, default="Open")
+    complexity = Column(String, nullable=True)  # Simple / Normal / Complex / Very Complex
 
     # timestamps you added
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)

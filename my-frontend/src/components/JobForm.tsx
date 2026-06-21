@@ -1,7 +1,7 @@
 // src/components/JobForm.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import type { Job } from "../types";
-import { USER_NAMES } from "../constants";
+import { USER_NAMES, COMPLEXITY_OPTIONS, COMPLEXITY_MULTIPLIERS } from "../constants";
 import { API_BASE } from "../api";
 import { toast } from "./ToastContainer";
 
@@ -104,10 +104,11 @@ function suggestUnit(job_type: JobType | "", task_name: string) {
   return "";
 }
 
-/** Local form state (same as before) */
+/** Local form state */
 type FormState = Omit<Job,"job_type"|"estimated_duration"> & {
   job_type: JobType | "";
   estimated_duration: number;
+  complexity: string;
 };
 
 type Props = {
@@ -128,17 +129,19 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
     start_date: "",
     due_date: "",
     status: "Open",
+    complexity: "Normal",
   });
 
-  /** Match backend compute_estimated: base depends on job_type, then * quantity */
-  const calcEstimated = (jobType: JobType | "", task: string, qty: number) => {
+  /** Mirrors backend compute_estimated including complexity multiplier */
+  const calcEstimated = (jobType: JobType | "", task: string, qty: number, complexity: string) => {
     const t = normalizeTask(task);
     const q = Math.max(1, Number(qty || 1));
+    const mult = COMPLEXITY_MULTIPLIERS[complexity] ?? 1.0;
     let base = 0;
     if (jobType === "Dev") base = DEV_RULES_FE[t] ?? 0;
     else if (jobType === "Non Dev") base = NON_DEV_RULES_FE[t] ?? 0;
     else if (jobType === "DX") base = DX_RULES_FE[t] ?? 0;
-    return +(base * q).toFixed(1);
+    return +(base * q * mult).toFixed(1);
   };
 
   // Prefill when editing (unchanged)
@@ -153,6 +156,7 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
         due_date: editJob.due_date || "",
         status: (editJob.status as any) || "Open",
         estimated_duration: Number(editJob.estimated_duration || 0),
+        complexity: editJob.complexity || "Normal",
       });
     } else {
       setFormData({
@@ -166,18 +170,19 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
         start_date: "",
         due_date: "",
         status: "Open",
+        complexity: "Normal",
       });
     }
   }, [editJob]);
 
-  // Recompute estimate when job_type, task, or quantity changes
+  // Recompute estimate when job_type, task, quantity, or complexity changes
   useEffect(() => {
     setFormData(prev => ({
       ...prev,
-      estimated_duration: calcEstimated(prev.job_type, prev.task_name, prev.quantity),
+      estimated_duration: calcEstimated(prev.job_type, prev.task_name, prev.quantity, prev.complexity),
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.job_type, formData.task_name, formData.quantity]);
+  }, [formData.job_type, formData.task_name, formData.quantity, formData.complexity]);
 
   const availableTasks = useMemo(() => {
     if (!formData.job_type) return [];
@@ -261,6 +266,7 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
         start_date: "",
         due_date: "",
         status: "Open",
+        complexity: "Normal",
       });
       onJobAdded();
       onCancelEdit?.();
@@ -328,15 +334,16 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
           </div>
 
           <div className="form-group">
-            <span className="form-label">Status</span>
+            <span className="form-label">Complexity</span>
             <select
               className="input"
-              name="status"
-              value={formData.status || "Open"}
+              name="complexity"
+              value={formData.complexity || "Normal"}
               onChange={handleChange}
             >
-              <option>Open</option>
-              <option>Done</option>
+              {COMPLEXITY_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.label} — {o.desc}</option>
+              ))}
             </select>
           </div>
         </div>

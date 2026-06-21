@@ -93,18 +93,25 @@ DX_RULES: Dict[str, float] = {# hour per day
     "Others (30 minutes)": 0.5,
 }
 
+COMPLEXITY_MULTIPLIERS: Dict[str, float] = {
+    "Simple": 0.5,
+    "Normal": 1.0,
+    "Complex": 1.5,
+    "Very Complex": 2.0,
+}
+
 def compute_estimated(job: models.WorkloadItem) -> float:
     q = max(1, int(job.quantity or 1))
-    if job.job_type == "DX":
-        base = DX_RULES.get(job.task_name, 0.0)
-        return base * q
+    mult = COMPLEXITY_MULTIPLIERS.get(job.complexity or "Normal", 1.0)
     if job.job_type == "Dev":
         base = DEV_RULES.get(job.task_name, 0.0)
-        return base * q
-    if job.job_type == "Non Dev":
+    elif job.job_type == "Non Dev":
         base = NON_DEV_RULES.get(job.task_name, 0.0)
-        return base * q
-    return float(job.estimated_duration or 0.0)
+    elif job.job_type == "DX":
+        base = DX_RULES.get(job.task_name, 0.0)
+    else:
+        return float(job.estimated_duration or 0.0)
+    return round(base * q * mult, 1)
 
 def validate_dates(start_date: Optional[str], due_date: Optional[str]):
     if not start_date or not due_date:
@@ -127,13 +134,14 @@ def serialize(r: database.WorkloadItemDB):
         "start_date": r.start_date,
         "due_date": r.due_date,
         "status": r.status or "Open",
+        "complexity": r.complexity or "Normal",
     }
 
 def diff_fields(old_row, new_payload: dict) -> List[dict]:
     """Return list of per-field changes old->new (skip identical/None-only noise)."""
     tracked = [
         "user_name","job_type","task_name","description",
-        "quantity","estimated_duration","unit","start_date","due_date","status"
+        "quantity","estimated_duration","unit","start_date","due_date","status","complexity"
     ]
     changes = []
     for f in tracked:
@@ -240,7 +248,7 @@ def update_job(job_id: int, updated_job: models.WorkloadItem, db: Session = Depe
     # compute changes BEFORE mutating row
     fields_to_track = [
         "user_name","job_type","task_name","description","quantity",
-        "unit","start_date","due_date","status"
+        "unit","start_date","due_date","status","complexity"
     ]
     changes = []
     for f in fields_to_track:
@@ -343,6 +351,25 @@ def get_summary(
         for r in results
     ]
 
+
+@app.patch("/jobs/{job_id}/status")
+def patch_job_status(job_id: int, status: str = Query(...), db: Session = Depends(get_db)):
+    row = db.query(database.WorkloadItemDB).filter(database.WorkloadItemDB.id == job_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if status not in ("Open", "Done"):
+        raise HTTPException(status_code=400, detail="status must be 'Open' or 'Done'")
+    old_status = row.status or "Open"
+    if old_status != status:
+        row.status = status
+        db.commit()
+        db.refresh(row)
+        log_history(
+            db, job_id=row.id, event="updated",
+            changes=[{"field": "status", "old": old_status, "new": status}],
+            created_by=row.user_name,
+        )
+    return serialize(row)
 
 @app.get("/jobs/{job_id}/history")
 def get_job_history(job_id: int, db: Session = Depends(get_db)):

@@ -40,7 +40,7 @@ const isOverdue = (j: Job) => {
 };
 
 /* ── Skeleton row ── */
-const SKELETON_COL_WIDTHS = ["40%","25%","55%","70%","60%","20%","25%","30%","28%","28%","22%","60px"];
+const SKELETON_COL_WIDTHS = ["40%","25%","55%","70%","60%","20%","25%","30%","25%","28%","28%","22%","60px"];
 const SkeletonRow = () => (
   <tr>
     {SKELETON_COL_WIDTHS.map((w, i) => (
@@ -78,6 +78,25 @@ const JobList: React.FC<Props> = ({ jobs, loading, onJobsUpdated, onEditJob }) =
   const [page,        setPage]        = useState(1);
   const pageSize = 10;
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+  // status toggle
+  const [togglingId, setTogglingId] = useState<number | null>(null);
+
+  const handleToggleStatus = async (job: Job) => {
+    if (!job.id) return;
+    const newStatus: "Open" | "Done" = (job.status || "Open") === "Open" ? "Done" : "Open";
+    setTogglingId(job.id);
+    try {
+      const result = await api.patchStatus(job.id, newStatus);
+      window.dispatchEvent(new CustomEvent("job:updated", { detail: { id: result.id } }));
+      onJobsUpdated();
+      toast.success(newStatus === "Done" ? "Marked as done." : "Job re-opened.");
+    } catch {
+      toast.error("Failed to update status.");
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   // history expansion + cache
   const [expandedId,       setExpandedId]       = useState<number | null>(null);
@@ -439,6 +458,7 @@ const JobList: React.FC<Props> = ({ jobs, loading, onJobsUpdated, onEditJob }) =
             <th onClick={() => toggleSort("estimated_duration")} style={{ cursor: "pointer" }}>
               Est. Hrs <SortArrow col="estimated_duration" sort={sort} />
             </th>
+            <th>Complexity</th>
             <th onClick={() => toggleSort("start_date")} style={{ cursor: "pointer" }}>
               Start <SortArrow col="start_date" sort={sort} />
             </th>
@@ -458,7 +478,7 @@ const JobList: React.FC<Props> = ({ jobs, loading, onJobsUpdated, onEditJob }) =
             Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} />)
           ) : pageRows.length === 0 ? (
             <tr>
-              <td colSpan={12} style={{ padding: 0, background: "transparent" }}>
+              <td colSpan={13} style={{ padding: 0, background: "transparent" }}>
                 <div className="empty-state">
                   <div className="empty-icon">📭</div>
                   <div className="empty-text">No jobs found</div>
@@ -496,12 +516,29 @@ const JobList: React.FC<Props> = ({ jobs, loading, onJobsUpdated, onEditJob }) =
                     <td className="cell-right">{job.quantity}</td>
                     <td style={{ color: "var(--muted)" }}>{job.unit || "—"}</td>
                     <td className="cell-right nowrap">{fmtHours(job.estimated_duration)}</td>
+                    <td>
+                      {(() => {
+                        const c = job.complexity || "Normal";
+                        const cls = c === "Simple" ? "complexity-simple"
+                          : c === "Complex" ? "complexity-complex"
+                          : c === "Very Complex" ? "complexity-verycomplex"
+                          : "complexity-normal";
+                        return <span className={`complexity-badge ${cls}`}>{c}</span>;
+                      })()}
+                    </td>
                     <td className="nowrap">{job.start_date || "—"}</td>
                     <td className="nowrap">{job.due_date || "—"}</td>
                     <td>
-                      <span className={`status ${job.status || "Open"}`}>
-                        {job.status || "Open"}
-                      </span>
+                      <button
+                        type="button"
+                        className={`btn small ${(job.status || "Open") === "Done" ? "ghost" : "primary"}`}
+                        style={(job.status || "Open") === "Done" ? { color: "var(--success)", borderColor: "var(--success)" } : {}}
+                        disabled={togglingId === job.id}
+                        onClick={e => { e.stopPropagation(); handleToggleStatus(job); }}
+                        title={(job.status || "Open") === "Done" ? "Click to re-open" : "Click to mark done"}
+                      >
+                        {togglingId === job.id ? "…" : (job.status || "Open") === "Done" ? "↺ Re-open" : "✓ Done"}
+                      </button>
                     </td>
                     <td>
                       <div className="row" style={{ gap: 6 }}>
@@ -526,7 +563,7 @@ const JobList: React.FC<Props> = ({ jobs, loading, onJobsUpdated, onEditJob }) =
                   {/* Inline history */}
                   {isExpanded && (
                     <tr className="detail-row">
-                      <td colSpan={12}>
+                      <td colSpan={13}>
                         <div className="history-panel">
                           {loadingHistoryId === job.id && (
                             <div className="history-loading">Loading history…</div>

@@ -612,6 +612,93 @@ tbody tr.row-overdue:hover td {
 .toast-error   { background: var(--toast-error-bg);   color: var(--toast-error-color);   border-color: var(--toast-error-border); }
 .toast-info    { background: var(--toast-info-bg);    color: var(--toast-info-color);    border-color: var(--toast-info-border); }
 
+/* ── Tabs ────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  gap: 2px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 16px;
+}
+.tab-btn {
+  padding: 9px 22px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+}
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tab-btn:hover:not(.active) { color: var(--text); }
+
+/* ── Complexity badges ────────────────────────────────────── */
+.complexity-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  display: inline-block;
+  white-space: nowrap;
+  letter-spacing: .3px;
+}
+.complexity-simple     { background: rgba(110,168,254,.14); color: #6ea8fe; border: 1px solid rgba(110,168,254,.3); }
+.complexity-normal     { background: var(--chip-badge-bg); color: var(--muted); border: 1px solid var(--border); }
+.complexity-complex    { background: rgba(255,209,102,.14); color: var(--warn); border: 1px solid rgba(255,209,102,.3); }
+.complexity-verycomplex{ background: rgba(255,85,85,.14);  color: var(--danger); border: 1px solid rgba(255,85,85,.3); }
+
+/* ── Analysis panel ──────────────────────────────────────── */
+.analysis-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.analysis-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.analysis-table th,
+.analysis-table td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+}
+.analysis-table thead th {
+  background: linear-gradient(180deg, var(--thead-from), var(--thead-to));
+  color: var(--thead-color);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  white-space: nowrap;
+}
+.analysis-table tbody tr:nth-child(even) td { background: var(--row-even); }
+.analysis-table tbody tr:hover td { background: var(--row-hover); }
+.analysis-table td.cell-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.insights-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.insight-item {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 /* ── Mobile ──────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .container {

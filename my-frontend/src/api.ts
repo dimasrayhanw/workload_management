@@ -43,6 +43,12 @@ export const api = {
   },
 
 // inside your exported api object:
+  async patchStatus(id: number, status: "Open" | "Done") {
+    const res = await fetch(`${API_BASE}/jobs/${id}/status?status=${encodeURIComponent(status)}`, { method: "PATCH" });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
   async getJobHistory(jobId: number): Promise<JobHistoryOut[]> {
     const res = await fetch(`${API_BASE}/jobs/${jobId}/history`);
     if (!res.ok) {
