@@ -119,9 +119,9 @@ function buildJobsSheet(wb: ExcelJS.Workbook, jobs: Job[], sheetName = "Jobs") {
 
   // Header row (row 3)
   const hRow = ws.getRow(3); hRow.height = 22;
-  COLS.forEach((c, i) => applyHeader(hRow.getCell(i + 1)));
+  COLS.forEach((_c, i) => applyHeader(hRow.getCell(i + 1)));
   hRow.values = ["", ...COLS.map(c => c.header)]; // values after fill — reapply headers
-  COLS.forEach((c, i) => applyHeader(hRow.getCell(i + 1))); // reapply styles
+  COLS.forEach((_c, i) => applyHeader(hRow.getCell(i + 1))); // reapply styles
 
   jobs.forEach((j, idx) => {
     const complexity = j.complexity || "Normal";
