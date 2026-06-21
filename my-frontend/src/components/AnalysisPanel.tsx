@@ -7,6 +7,7 @@ import {
   Cell, Legend, CartesianGrid,
 } from "recharts";
 import type { Theme } from "../App";
+import { exportAnalysisExcel } from "../utils/exportExcel";
 
 type Props = {
   jobs: Job[];
@@ -192,6 +193,20 @@ const AnalysisPanel: React.FC<Props> = ({ jobs, theme, loading, onRefresh }) => 
     );
   };
 
+  const [exporting, setExporting] = React.useState(false);
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const now = new Date().toISOString().slice(0, 10);
+      await exportAnalysisExcel(jobs, perUser, insights, `workload_analysis_${now}.xlsx`);
+    } catch {
+      // toast not available here, silent fail — user can retry
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div>
       {/* ── Toolbar ── */}
@@ -202,6 +217,9 @@ const AnalysisPanel: React.FC<Props> = ({ jobs, theme, loading, onRefresh }) => 
         <div className="spacer" />
         <button className="btn ghost small" onClick={onRefresh} disabled={loading}>
           {loading ? "Refreshing…" : "↻ Refresh"}
+        </button>
+        <button className="btn primary small" onClick={handleExport} disabled={exporting || jobs.length === 0}>
+          {exporting ? "Exporting…" : "↓ Export Analysis"}
         </button>
       </div>
 

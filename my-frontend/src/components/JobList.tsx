@@ -4,7 +4,7 @@ import { api } from "../api";
 import { toast } from "./ToastContainer";
 import React, { useMemo, useState, useEffect } from "react";
 import { USER_NAMES, resolveDisplayName } from "../constants";
-import ExcelJS from "exceljs";
+import { exportJobsExcel } from "../utils/exportExcel";
 
 type Props = {
   jobs: Job[];
@@ -242,119 +242,12 @@ const JobList: React.FC<Props> = ({ jobs, loading, onJobsUpdated, onEditJob }) =
   /* ── Export Excel ── */
   const exportExcel = async () => {
     if (filtered.length === 0) { toast.info("No jobs to export."); return; }
-
-    const wb = new ExcelJS.Workbook();
-    wb.created = new Date();
-    wb.modified = new Date();
-    const ws = wb.addWorksheet("Jobs", {
-      views: [{ state: "frozen", ySplit: 1 }],
-      properties: { defaultRowHeight: 18 },
-    });
-
-    ws.columns = [
-      { header: "User Name",           key: "user_name",          width: 22 },
-      { header: "Job Type",            key: "job_type",           width: 12 },
-      { header: "Task Name",           key: "task_name",          width: 30 },
-      { header: "Description",         key: "description",        width: 40 },
-      { header: "Quantity",            key: "quantity",           width: 10, style: { alignment: { horizontal: "right" } } },
-      { header: "Unit",                key: "unit",               width: 10 },
-      { header: "Est. Duration (hrs)", key: "estimated_duration", width: 18, style: { alignment: { horizontal: "right" }, numFmt: "0.0" } },
-      { header: "Start Date",          key: "start_date",         width: 12 },
-      { header: "Due Date",            key: "due_date",           width: 12 },
-      { header: "Status",              key: "status",             width: 10 },
-    ];
-
-    const header = ws.getRow(1);
-    header.height = 22;
-    header.eachCell(cell => {
-      cell.font = { bold: true };
-      cell.alignment = { vertical: "middle", horizontal: "center" };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE6F2FF" } };
-      cell.border = {
-        top: { style: "thin", color: { argb: "FFB0C4DE" } },
-        left: { style: "thin", color: { argb: "FFB0C4DE" } },
-        bottom: { style: "thin", color: { argb: "FFB0C4DE" } },
-        right: { style: "thin", color: { argb: "FFB0C4DE" } },
-      };
-    });
-
-    filtered.forEach((j, i) => {
-      const r = ws.addRow({
-        user_name: resolveDisplayName(j.user_name || ""),
-        job_type: j.job_type || "",
-        task_name: j.task_name || "",
-        description: j.description || "",
-        quantity: j.quantity ?? "",
-        unit: j.unit || "",
-        estimated_duration:
-          typeof j.estimated_duration === "number" && isFinite(j.estimated_duration)
-            ? j.estimated_duration : null,
-        start_date: j.start_date || "",
-        due_date: j.due_date || "",
-        status: j.status || "Open",
-      });
-
-      if (i % 2 === 0) {
-        r.eachCell(cell => {
-          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF9FBFD" } };
-        });
-      }
-      r.eachCell(cell => {
-        cell.border = {
-          top: { style: "hair", color: { argb: "FFE0E6ED" } },
-          left: { style: "hair", color: { argb: "FFE0E6ED" } },
-          bottom: { style: "hair", color: { argb: "FFE0E6ED" } },
-          right: { style: "hair", color: { argb: "FFE0E6ED" } },
-        };
-      });
-
-      if (isOverdue(j)) {
-        r.getCell("due_date").font = { color: { argb: "FF9C2B2E" }, bold: true };
-      }
-      if ((j.status || "").toLowerCase() === "done") {
-        r.eachCell(cell => {
-          const f = cell.font || {};
-          cell.font = { ...f, color: { argb: "FF6B7280" } };
-        });
-      }
-    });
-
-    ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: ws.columnCount } };
-
-    // Summary sheet
-    const byUserType = new Map<string, { qty: number; hrs: number }>();
-    filtered.forEach(j => {
-      const key = `${resolveDisplayName(j.user_name || "")}|${j.job_type || ""}`;
-      const cur = byUserType.get(key) || { qty: 0, hrs: 0 };
-      cur.qty += Number(j.quantity ?? 0);
-      const h = Number(j.estimated_duration ?? 0);
-      if (isFinite(h)) cur.hrs += h;
-      byUserType.set(key, cur);
-    });
-
-    const ws2 = wb.addWorksheet("Summary", { views: [{ state: "frozen", ySplit: 1 }] });
-    ws2.columns = [
-      { header: "User",             key: "user", width: 22 },
-      { header: "Job Type",         key: "type", width: 12 },
-      { header: "Total Quantity",   key: "qty",  width: 16, style: { alignment: { horizontal: "right" } } },
-      { header: "Total Est. Hours", key: "hrs",  width: 18, style: { alignment: { horizontal: "right" }, numFmt: "0.0" } },
-    ];
-    ws2.getRow(1).font = { bold: true };
-    byUserType.forEach((v, k) => {
-      const [user, type] = k.split("|");
-      ws2.addRow({ user, type, qty: v.qty, hrs: v.hrs });
-    });
-    ws2.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: ws2.columnCount } };
-
-    const buf = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "jobs.xlsx";
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success(`Exported ${filtered.length} job(s) to Excel.`);
+    try {
+      const count = await exportJobsExcel(filtered, "workload_jobs.xlsx");
+      toast.success(`Exported ${count} job(s) to Excel.`);
+    } catch {
+      toast.error("Export failed. Try again.");
+    }
   };
 
   /* ── Render ── */
