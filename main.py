@@ -2,7 +2,7 @@
 from fastapi import FastAPI, HTTPException, Depends, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, text
 from datetime import date
 from typing import Optional, Dict, List
 from fastapi.responses import JSONResponse
@@ -190,14 +190,20 @@ def healthz():
 
 @app.on_event("startup")
 def on_startup():
-    # Try to create tables, but don't prevent the app from starting.
     try:
-        # SQLAlchemy 2.x way to create_all safely
         with database.engine.begin() as conn:
             database.Base.metadata.create_all(bind=conn)
+            # Add complexity column to existing DBs that were created before this field
+            try:
+                if database.is_sqlite:
+                    conn.execute(text("ALTER TABLE workload_items ADD COLUMN complexity VARCHAR"))
+                else:
+                    conn.execute(text("ALTER TABLE workload_items ADD COLUMN IF NOT EXISTS complexity VARCHAR"))
+                print("✅ Migrated: added complexity column.")
+            except Exception:
+                pass  # column already exists — safe to ignore
         print("✅ DB tables ensured.")
     except SQLAlchemyError as e:
-        # Log and continue — app still boots; API will 500 on DB routes until DB works
         print(f"⚠️  DB init failed (continuing to serve): {e}")
 
 @app.get("/", tags=["meta"])
