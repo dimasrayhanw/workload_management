@@ -611,3 +611,54 @@ tbody tr.row-overdue:hover td {
 .toast-success { background: var(--toast-success-bg); color: var(--toast-success-color); border-color: var(--toast-success-border); }
 .toast-error   { background: var(--toast-error-bg);   color: var(--toast-error-color);   border-color: var(--toast-error-border); }
 .toast-info    { background: var(--toast-info-bg);    color: var(--toast-info-color);    border-color: var(--toast-info-border); }
+
+/* ── Mobile ──────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .container {
+    margin: 12px auto 40px;
+    padding: 0 10px;
+  }
+
+  /* Header stacks vertically */
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .h1 { font-size: 15px; }
+
+  /* Stat cards: 2 per row */
+  .stat-cards { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-value { font-size: 22px; }
+  .stat-card  { padding: 12px 14px; }
+
+  /* Charts stack */
+  .charts { flex-direction: column; }
+  .charts > .card { min-width: unset; max-width: unset !important; }
+
+  /* Card padding tighter */
+  .card.pad { padding: 12px; }
+
+  /* Toast full-width at bottom */
+  .toast-container { bottom: 12px; right: 10px; left: 10px; }
+  .toast { max-width: 100%; }
+
+  /* Table font smaller for fit */
+  tbody td { font-size: 12px; padding: 8px 8px; }
+  thead th  { font-size: 10px; padding: 8px 8px; }
+
+  /* Form bottom row stacks */
+  .form-two-col:last-child > div:last-child { justify-content: flex-start; }
+}
+
+/* ── Tablet ──────────────────────────────────────────────── */
+@media (min-width: 641px) and (max-width: 900px) {
+  .container { max-width: 100%; padding: 0 14px; }
+  .charts { flex-direction: column; }
+  .charts > .card { min-width: unset; max-width: unset !important; }
+  .stat-cards { grid-template-columns: repeat(2, 1fr); }
+}
