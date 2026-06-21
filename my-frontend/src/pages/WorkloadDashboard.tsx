@@ -4,6 +4,7 @@ import { api } from "../api";
 import JobForm from "../components/JobForm";
 import JobList from "../components/JobList";
 import { toast } from "../components/ToastContainer";
+import type { Theme } from "../App";
 import type { Job } from "../types";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -11,35 +12,45 @@ import {
 } from "recharts";
 import "../App.css";
 
-const COLORS = ["#6ea8fe","#9b8dfc","#4dd4ac","#ffd166","#ff8fab","#a1e3ff","#b2f7ef","#f7a072"];
-
-const AxisTick: React.FC<any> = ({ x, y, payload }) => {
-  const label = String(payload?.value ?? "");
-  const short = label.length > 14 ? label.slice(0, 12) + "…" : label;
-  return (
-    <text
-      x={x} y={y + 12}
-      textAnchor="end"
-      transform={`rotate(-35, ${x}, ${y + 12})`}
-      style={{ fontSize: 11, fill: "#b7c2e6" }}
-    >
-      {short}
-    </text>
-  );
+type Props = {
+  theme: Theme;
+  onToggleTheme: () => void;
 };
 
-const CHART_TOOLTIP_STYLE = {
-  background: "#0f152b",
-  border: "1px solid #1b2344",
-  borderRadius: 8,
-  color: "#e8ecf7",
-};
+const CHART_COLORS = ["#A50034","#cc3366","#ff6699","#6ea8fe","#4dd4ac","#ffd166","#f7a072","#9b8dfc"];
 
-const WorkloadDashboard: React.FC = () => {
+const WorkloadDashboard: React.FC<Props> = ({ theme, onToggleTheme }) => {
   const [jobs, setJobs] = React.useState<Job[]>([]);
-  const [loading, setLoading] = React.useState(true); // true = show spinner immediately
+  const [loading, setLoading] = React.useState(true);
   const [isFirstLoad, setIsFirstLoad] = React.useState(true);
   const [editingJob, setEditingJob] = React.useState<Job | null>(null);
+
+  const isDark = theme === "dark";
+
+  const chartTooltipStyle = {
+    background: isDark ? "#1c1c1c" : "#ffffff",
+    border: `1px solid ${isDark ? "#2d2d2d" : "#e2e2e2"}`,
+    borderRadius: 8,
+    color: isDark ? "#f2f2f2" : "#1a1a1a",
+    fontSize: 12,
+  };
+
+  const axisColor = isDark ? "#9e9e9e" : "#6b7280";
+
+  const AxisTick: React.FC<any> = ({ x, y, payload }) => {
+    const label = String(payload?.value ?? "");
+    const short = label.length > 14 ? label.slice(0, 12) + "…" : label;
+    return (
+      <text
+        x={x} y={y + 12}
+        textAnchor="end"
+        transform={`rotate(-35, ${x}, ${y + 12})`}
+        style={{ fontSize: 11, fill: axisColor }}
+      >
+        {short}
+      </text>
+    );
+  };
 
   const fetchJobs = React.useCallback(async () => {
     setLoading(true);
@@ -56,7 +67,7 @@ const WorkloadDashboard: React.FC = () => {
 
   React.useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
-  // ── Stat card values ──────────────────────────────────────
+  // ── Stat values ───────────────────────────────────────────
   const stats = React.useMemo(() => {
     const activeJobs = jobs.filter(j => (j.status || "Open").toLowerCase() !== "done");
     const totalHours = activeJobs.reduce((s, j) => s + (j.estimated_duration || 0), 0);
@@ -113,19 +124,24 @@ const WorkloadDashboard: React.FC = () => {
 
       {/* ── Header ── */}
       <div className="header">
-        <div>
+        <div className="header-left">
           <div className="h1">Workload Dashboard HW OLED LGERC</div>
           <div className="sub">For the easiest job tracking</div>
         </div>
-        <div className="chips">
-          <span className="chip badge">Jobs: {jobs.length}</span>
-          <span className="chip badge">Users: {stats.uniqueUsers}</span>
+        <div className="header-right">
+          <button className="theme-toggle" onClick={onToggleTheme} title="Toggle theme">
+            {isDark ? "☀️ Light" : "🌙 Dark"}
+          </button>
+          <div className="chips">
+            <span className="chip badge">Jobs: {jobs.length}</span>
+            <span className="chip badge">Users: {stats.uniqueUsers}</span>
+          </div>
         </div>
       </div>
 
       {/* ── Stat cards ── */}
       <div className="stat-cards">
-        <div className="stat-card accent-blue">
+        <div className="stat-card accent-red">
           <span className="stat-label">Total Jobs</span>
           <span className="stat-value">{stats.total}</span>
           <span className="stat-sub">All statuses</span>
@@ -175,10 +191,16 @@ const WorkloadDashboard: React.FC = () => {
                     axisLine={false}
                     tick={<AxisTick />}
                   />
-                  <YAxis tick={{ fill: "#b7c2e6", fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} cursor={{ fill: "#ffffff0a" }} />
+                  <YAxis
+                    tick={{ fill: axisColor, fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip contentStyle={chartTooltipStyle} cursor={{ fill: "rgba(165,0,52,0.08)" }} />
                   <Bar dataKey="hours" radius={[4, 4, 0, 0]}>
-                    {byUser.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    {byUser.map((_, i) => (
+                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -198,10 +220,12 @@ const WorkloadDashboard: React.FC = () => {
               <ResponsiveContainer>
                 <PieChart>
                   <Pie data={byType} dataKey="value" nameKey="name" outerRadius={90} paddingAngle={3}>
-                    {byType.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    {byType.map((_, i) => (
+                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
                   </Pie>
-                  <Legend wrapperStyle={{ fontSize: 12, color: "#b7c2e6" }} />
-                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                  <Legend wrapperStyle={{ fontSize: 12, color: axisColor }} />
+                  <Tooltip contentStyle={chartTooltipStyle} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
