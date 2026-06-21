@@ -3,7 +3,7 @@ import type { Job } from "../types";
 import { api } from "../api";
 import { toast } from "./ToastContainer";
 import React, { useMemo, useState, useEffect } from "react";
-import { USER_NAMES } from "../constants";
+import { USER_NAMES, resolveDisplayName } from "../constants";
 import ExcelJS from "exceljs";
 
 type Props = {
@@ -147,7 +147,7 @@ const JobList: React.FC<Props> = ({ jobs, loading, onJobsUpdated, onEditJob }) =
 
   const filtered = useMemo(() => {
     let r = jobs.slice();
-    if (fUser)   r = r.filter(j => (j.user_name || "") === fUser);
+    if (fUser)   r = r.filter(j => resolveDisplayName(j.user_name || "") === fUser);
     if (fType)   r = r.filter(j => j.job_type === fType);
     if (fTask)   r = r.filter(j => (j.task_name || "").toLowerCase().includes(fTask.toLowerCase()));
     if (fStatus) r = r.filter(j => (j.status || "Open") === fStatus);
@@ -261,7 +261,7 @@ const JobList: React.FC<Props> = ({ jobs, loading, onJobsUpdated, onEditJob }) =
 
     filtered.forEach((j, i) => {
       const r = ws.addRow({
-        user_name: j.user_name || "",
+        user_name: resolveDisplayName(j.user_name || ""),
         job_type: j.job_type || "",
         task_name: j.task_name || "",
         description: j.description || "",
@@ -305,7 +305,7 @@ const JobList: React.FC<Props> = ({ jobs, loading, onJobsUpdated, onEditJob }) =
     // Summary sheet
     const byUserType = new Map<string, { qty: number; hrs: number }>();
     filtered.forEach(j => {
-      const key = `${(j.user_name || "").toLowerCase()}|${j.job_type || ""}`;
+      const key = `${resolveDisplayName(j.user_name || "")}|${j.job_type || ""}`;
       const cur = byUserType.get(key) || { qty: 0, hrs: 0 };
       cur.qty += Number(j.quantity ?? 0);
       const h = Number(j.estimated_duration ?? 0);
@@ -489,7 +489,7 @@ const JobList: React.FC<Props> = ({ jobs, loading, onJobsUpdated, onEditJob }) =
                         onClick={e => e.stopPropagation()}
                       />
                     </td>
-                    <td>{job.user_name}</td>
+                    <td>{resolveDisplayName(job.user_name)}</td>
                     <td>{job.job_type}</td>
                     <td>{job.task_name}</td>
                     <td style={{ color: "var(--muted)" }}>{job.description || "—"}</td>
@@ -537,7 +537,7 @@ const JobList: React.FC<Props> = ({ jobs, loading, onJobsUpdated, onEditJob }) =
                           {!loadingHistoryId && !historyError && (
                             <div className="history-content">
                               <div className="history-head">
-                                <strong>Job #{job.id}</strong> — {job.user_name}
+                                <strong>Job #{job.id}</strong> — {resolveDisplayName(job.user_name)}
                               </div>
                               <div className="history-grid">
                                 {(historyByJob[job.id!] || []).map(h => (

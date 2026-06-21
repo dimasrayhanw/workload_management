@@ -6,6 +6,7 @@ import JobList from "../components/JobList";
 import { toast } from "../components/ToastContainer";
 import type { Theme } from "../App";
 import type { Job } from "../types";
+import { resolveDisplayName } from "../constants";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -91,7 +92,7 @@ const WorkloadDashboard: React.FC<Props> = ({ theme, onToggleTheme }) => {
   const byUser = React.useMemo(() => {
     const map: Record<string, number> = {};
     for (const j of activeJobs) {
-      const key = (j.user_name || "unknown").toLowerCase();
+      const key = resolveDisplayName(j.user_name || "unknown");
       map[key] = (map[key] || 0) + (j.estimated_duration || 0);
     }
     return Object.entries(map)

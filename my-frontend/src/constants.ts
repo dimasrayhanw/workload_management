@@ -1,4 +1,28 @@
 // src/constants.ts
+
+/** Maps legacy email-style DB names → new short display names */
+export const NAME_LEGACY_MAP: Record<string, string> = {
+  "rayhan.widyaris": "Dimas",
+  "hasna.tsany":     "Hasna",
+  "adi.abdillah":    "Adi",
+  "rifqi.naufal":    "Affan",
+  "ade.dwiputro":    "Ade",
+  "ghina.amani":     "Ghina",
+  "azka.ismail":     "Azka",
+  "daffa.rheza":     "Daffa",
+  "satrio.nurcahyo": "Satrio",
+  "dicky.elnur":     "Dicky",
+  "heru.sujarko":    "Heru",
+  "hamdani.adnan":   "Adnan",
+  "vicky.firmansyah":"Vicky",
+};
+
+/** Returns the short display name for any user_name value (legacy or new) */
+export function resolveDisplayName(raw: string): string {
+  if (!raw) return "unknown";
+  return NAME_LEGACY_MAP[raw.trim().toLowerCase()] ?? raw;
+}
+
 export const USER_NAMES = [
   // Team Leader
   "Sung-Bo",
