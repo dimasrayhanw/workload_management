@@ -3,35 +3,42 @@ import React from "react";
 import { api } from "../api";
 import JobForm from "../components/JobForm";
 import JobList from "../components/JobList";
+import { toast } from "../components/ToastContainer";
 import type { Job } from "../types";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
+  PieChart, Pie, Cell, Legend,
 } from "recharts";
 import "../App.css";
 
-const COLORS = ["#6ea8fe", "#9b8dfc", "#4dd4ac", "#ffd166", "#ff8fab", "#a1e3ff", "#b2f7ef", "#f7a072"];
+const COLORS = ["#6ea8fe","#9b8dfc","#4dd4ac","#ffd166","#ff8fab","#a1e3ff","#b2f7ef","#f7a072"];
 
-/** Rotated/custom tick for the X axis (always render, truncate long names) */
 const AxisTick: React.FC<any> = ({ x, y, payload }) => {
   const label = String(payload?.value ?? "");
   const short = label.length > 14 ? label.slice(0, 12) + "…" : label;
   return (
     <text
-      x={x}
-      y={y + 12}
+      x={x} y={y + 12}
       textAnchor="end"
       transform={`rotate(-35, ${x}, ${y + 12})`}
-      style={{ fontSize: 12, fill: "#b7c2e6" }}
+      style={{ fontSize: 11, fill: "#b7c2e6" }}
     >
       {short}
     </text>
   );
 };
 
+const CHART_TOOLTIP_STYLE = {
+  background: "#0f152b",
+  border: "1px solid #1b2344",
+  borderRadius: 8,
+  color: "#e8ecf7",
+};
+
 const WorkloadDashboard: React.FC = () => {
   const [jobs, setJobs] = React.useState<Job[]>([]);
-  const [loading, setLoading] = React.useState(false);
+  const [loading, setLoading] = React.useState(true); // true = show spinner immediately
+  const [isFirstLoad, setIsFirstLoad] = React.useState(true);
   const [editingJob, setEditingJob] = React.useState<Job | null>(null);
 
   const fetchJobs = React.useCallback(async () => {
@@ -39,16 +46,32 @@ const WorkloadDashboard: React.FC = () => {
     try {
       const data = await api.getJobs();
       setJobs(data);
+    } catch {
+      toast.error("Failed to load jobs. Check your connection.");
     } finally {
       setLoading(false);
+      setIsFirstLoad(false);
     }
   }, []);
 
-  React.useEffect(() => {
-    fetchJobs();
-  }, [fetchJobs]);
+  React.useEffect(() => { fetchJobs(); }, [fetchJobs]);
 
-  // Charts data — exclude "Done" jobs from visualizations
+  // ── Stat card values ──────────────────────────────────────
+  const stats = React.useMemo(() => {
+    const activeJobs = jobs.filter(j => (j.status || "Open").toLowerCase() !== "done");
+    const totalHours = activeJobs.reduce((s, j) => s + (j.estimated_duration || 0), 0);
+    const uniqueUsers = new Set(jobs.map(j => (j.user_name || "").toLowerCase())).size;
+    const overdueCount = jobs.filter(j => {
+      if (!j.due_date || (j.status || "Open").toLowerCase() === "done") return false;
+      const [y, m, d] = j.due_date.split("-").map(Number);
+      const due = new Date(y, m - 1, d);
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      return due < today;
+    }).length;
+    return { total: jobs.length, totalHours, uniqueUsers, overdueCount };
+  }, [jobs]);
+
+  // ── Chart data (active jobs only) ─────────────────────────
   const activeJobs = React.useMemo(
     () => jobs.filter(j => (j.status || "Open").toLowerCase() !== "done"),
     [jobs]
@@ -60,7 +83,9 @@ const WorkloadDashboard: React.FC = () => {
       const key = (j.user_name || "unknown").toLowerCase();
       map[key] = (map[key] || 0) + (j.estimated_duration || 0);
     }
-    return Object.entries(map).map(([user, hours]) => ({ user, hours: +hours.toFixed(1) }));
+    return Object.entries(map)
+      .map(([user, hours]) => ({ user, hours: +hours.toFixed(1) }))
+      .sort((a, b) => b.hours - a.hours);
   }, [activeJobs]);
 
   const byType = React.useMemo(() => {
@@ -71,8 +96,22 @@ const WorkloadDashboard: React.FC = () => {
     return Object.entries(map).map(([name, value]) => ({ name, value: +value.toFixed(1) }));
   }, [activeJobs]);
 
+  // ── Initial loading screen ─────────────────────────────────
+  if (isFirstLoad && loading) {
+    return (
+      <div className="container">
+        <div className="page-spinner">
+          <div className="spinner" />
+          Loading workload data…
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container">
+
+      {/* ── Header ── */}
       <div className="header">
         <div>
           <div className="h1">Workload Dashboard HW OLED LGERC</div>
@@ -80,66 +119,99 @@ const WorkloadDashboard: React.FC = () => {
         </div>
         <div className="chips">
           <span className="chip badge">Jobs: {jobs.length}</span>
-          <span className="chip badge">
-            Users: {new Set(jobs.map(j => (j.user_name || "").toLowerCase())).size}
+          <span className="chip badge">Users: {stats.uniqueUsers}</span>
+        </div>
+      </div>
+
+      {/* ── Stat cards ── */}
+      <div className="stat-cards">
+        <div className="stat-card accent-blue">
+          <span className="stat-label">Total Jobs</span>
+          <span className="stat-value">{stats.total}</span>
+          <span className="stat-sub">All statuses</span>
+        </div>
+        <div className="stat-card accent-green">
+          <span className="stat-label">Active Hours</span>
+          <span className="stat-value">{stats.totalHours.toFixed(1)}</span>
+          <span className="stat-sub">Estimated (excl. Done)</span>
+        </div>
+        <div className="stat-card accent-warn">
+          <span className="stat-label">Active Users</span>
+          <span className="stat-value">{stats.uniqueUsers}</span>
+          <span className="stat-sub">Unique members</span>
+        </div>
+        <div className={`stat-card ${stats.overdueCount > 0 ? "accent-danger" : "accent-green"}`}>
+          <span className="stat-label">Overdue</span>
+          <span
+            className="stat-value"
+            style={stats.overdueCount > 0 ? { color: "var(--danger)" } : {}}
+          >
+            {stats.overdueCount}
           </span>
+          <span className="stat-sub">Past due date</span>
         </div>
       </div>
 
-      {/* Charts row */}
+      {/* ── Charts row ── */}
       <div className="card pad charts" style={{ marginBottom: 14 }}>
-        {/* Bar */}
+
+        {/* Bar: hours by user */}
         <div className="card pad">
-          <div className="section-title">Hours by User</div>
-          <div style={{ width: "100%", height: 260 }}>
-            <ResponsiveContainer>
-              <BarChart
-                data={byUser}
-                margin={{ top: 8, right: 12, left: 0, bottom: 48 }}
-              >
-                <XAxis
-                  dataKey="user"
-                  interval={0}        // show every label
-                  height={52}         // room for rotated labels
-                  tickMargin={8}
-                  tickLine={false}
-                  axisLine={false}
-                  tick={<AxisTick />} // rotated + truncated
-                />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="hours">
-                  {byUser.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <div className="section-title">Hours by User (active)</div>
+          {loading ? (
+            <div className="skeleton" style={{ height: 260, borderRadius: 8 }} />
+          ) : byUser.length === 0 ? (
+            <div className="empty-chart"><span className="muted">No active jobs</span></div>
+          ) : (
+            <div style={{ width: "100%", height: 260 }}>
+              <ResponsiveContainer>
+                <BarChart data={byUser} margin={{ top: 8, right: 12, left: 0, bottom: 52 }}>
+                  <XAxis
+                    dataKey="user"
+                    interval={0}
+                    height={56}
+                    tickMargin={8}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={<AxisTick />}
+                  />
+                  <YAxis tick={{ fill: "#b7c2e6", fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} cursor={{ fill: "#ffffff0a" }} />
+                  <Bar dataKey="hours" radius={[4, 4, 0, 0]}>
+                    {byUser.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
-        {/* Pie */}
+        {/* Pie: hours by type */}
         <div className="card pad" style={{ maxWidth: 420 }}>
-          <div className="section-title">Hours by Type</div>
-          <div style={{ width: "100%", height: 260 }}>
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie data={byType} dataKey="value" nameKey="name" outerRadius={90}>
-                  {byType.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Legend />
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          <div className="section-title">Hours by Type (active)</div>
+          {loading ? (
+            <div className="skeleton" style={{ height: 260, borderRadius: 8 }} />
+          ) : byType.length === 0 ? (
+            <div className="empty-chart"><span className="muted">No active jobs</span></div>
+          ) : (
+            <div style={{ width: "100%", height: 260 }}>
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie data={byType} dataKey="value" nameKey="name" outerRadius={90} paddingAngle={3}>
+                    {byType.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Pie>
+                  <Legend wrapperStyle={{ fontSize: 12, color: "#b7c2e6" }} />
+                  <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Form */}
+      {/* ── Add / Edit form ── */}
       <div className="card pad" style={{ marginBottom: 14 }}>
-        <div className="section-title">Add / Edit Job</div>
+        <div className="section-title">{editingJob ? "Edit Job" : "Add Job"}</div>
         <JobForm
           editJob={editingJob}
           onCancelEdit={() => setEditingJob(null)}
@@ -150,20 +222,21 @@ const WorkloadDashboard: React.FC = () => {
         />
       </div>
 
-      {/* List */}
+      {/* ── Job list ── */}
       <div className="card pad">
         <div className="toolbar" style={{ marginBottom: 10 }}>
           <div className="section-title" style={{ margin: 0 }}>Jobs</div>
           <div className="spacer" />
           <button className="btn ghost small" onClick={fetchJobs} disabled={loading}>
-            {loading ? "Refreshing…" : "Refresh"}
+            {loading ? "Refreshing…" : "↻ Refresh"}
           </button>
         </div>
         <div className="table-wrap">
           <JobList
             jobs={jobs}
+            loading={loading}
             onJobsUpdated={fetchJobs}
-            onEditJob={(job) => setEditingJob(job)}
+            onEditJob={job => setEditingJob(job)}
           />
         </div>
       </div>

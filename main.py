@@ -270,7 +270,7 @@ def update_job(job_id: int, updated_job: models.WorkloadItem, db: Session = Depe
         )
     else:
         # optional: still record a no-op update
-        log_history(db, row.id, event="updated", changes=[])
+        log_history(db, job_id=row.id, event="updated", changes=[])
 
     return serialize(row)
 

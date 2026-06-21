@@ -2,6 +2,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { Job } from "../types";
 import { USER_NAMES } from "../constants";
+import { API_BASE } from "../api";
+import { toast } from "./ToastContainer";
 
 
 type JobType = "Dev" | "Non Dev" | "DX";
@@ -60,6 +62,7 @@ const NON_DEV_RULES_FE: Record<string, number> = {
   "Asset": 5.0,
   "Warehouse": 4.0,
   "Others (1 hour)": 1.0,
+  "Others (30 minutes)": 0.5,
 };
 const DX_RULES_FE: Record<string, number> = {
   "Initial Setup": 2.0,
@@ -69,6 +72,7 @@ const DX_RULES_FE: Record<string, number> = {
   "Beta Test": 2.0,
   "Launching": 0.5,
   "Others (1 hour)": 1.0,
+  "Others (30 minutes)": 0.5,
 };
 
 /** Optional alias mapping so “Sample Sending” also works */
@@ -213,13 +217,13 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.user_name.trim()) { alert("User name required"); return; }
-    if (!formData.job_type) { alert("Please select a Job Type."); return; }
-    if (!formData.task_name) { alert("Please select a Task Name."); return; }
+    if (!formData.user_name.trim()) { toast.error("User name required"); return; }
+    if (!formData.job_type) { toast.error("Please select a Job Type."); return; }
+    if (!formData.task_name) { toast.error("Please select a Task Name."); return; }
 
     const url = editJob
-      ? `${import.meta.env.VITE_API_BASE}/jobs/${editJob.id}`
-      : `${import.meta.env.VITE_API_BASE}/jobs/`;
+      ? `${API_BASE}/jobs/${editJob.id}`
+      : `${API_BASE}/jobs/`;
     const method = editJob ? "PUT" : "POST";
 
     const payload = {
@@ -262,7 +266,7 @@ const JobForm: React.FC<Props> = ({ onJobAdded, editJob, onCancelEdit }) => {
       onCancelEdit?.();
     } catch (err) {
       console.error(err);
-      alert("Failed to save job. See console for details.");
+      toast.error("Failed to save job. Check your connection.");
     }
   };
 
