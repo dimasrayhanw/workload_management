@@ -4,6 +4,7 @@ import { api } from "../api";
 import JobForm from "../components/JobForm";
 import JobList from "../components/JobList";
 import AnalysisPanel from "../components/AnalysisPanel";
+import GuidePanel from "../components/GuidePanel";
 import { toast } from "../components/ToastContainer";
 import type { Theme } from "../App";
 import type { Job } from "../types";
@@ -19,7 +20,7 @@ type Props = {
   onToggleTheme: () => void;
 };
 
-type Tab = "dashboard" | "analysis";
+type Tab = "dashboard" | "analysis" | "guide";
 
 const CHART_COLORS = ["#A50034","#cc3366","#ff6699","#6ea8fe","#4dd4ac","#ffd166","#f7a072","#9b8dfc","#f28b82","#aecbfa"];
 const TYPE_COLORS: Record<string, string> = { Dev: "#A50034", "Non Dev": "#6ea8fe", DX: "#4dd4ac" };
@@ -198,6 +199,9 @@ const WorkloadDashboard: React.FC<Props> = ({ theme, onToggleTheme }) => {
         <button className={`tab-btn ${tab === "analysis" ? "active" : ""}`} onClick={() => setTab("analysis")}>
           🔍 Analysis
         </button>
+        <button className={`tab-btn ${tab === "guide" ? "active" : ""}`} onClick={() => setTab("guide")}>
+          📖 Guide
+        </button>
       </div>
 
       {/* ══════════════ DASHBOARD TAB ══════════════ */}
@@ -339,6 +343,8 @@ const WorkloadDashboard: React.FC<Props> = ({ theme, onToggleTheme }) => {
       {tab === "analysis" && (
         <AnalysisPanel jobs={jobs} theme={theme} onRefresh={fetchJobs} loading={loading} />
       )}
+
+      {tab === "guide" && <GuidePanel />}
     </div>
   );
 };
